@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "localizify": "^2.0.0",
+    "md5": "^2.3.0",
+    "mysql2": "^3.12.0",
+    "Validator": "^1.1.4"
+  }
+}
