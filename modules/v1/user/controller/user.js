@@ -12,30 +12,26 @@ const { t } = require("localizify");
 
 class User {
     signup(req, res) {
-        // console.log("signup");
         var request_data = req.body;
-        // const userLang = req.headers["accept-language"] || "en";
-        // localizify.setLocale(userLang);
-
         const rules = validationRules.signup;
-        // let message = req.language.required;
         let message = {
             required: req.language.required,
             email: t('email'),
-            'mobile_number.min': t('mobile_number_min'),
-            'mobile_number.regex': t('mobile_number_numeric'),
+            'phone_number.regex': t('mobile_number_numeric'),
             'passwords.min': t('passwords_min')
         };
     
         let keywords = {
             'password': t('rest_keywords_password'),
-            'email_id': t('email')
+            'email_id': t('email'),
+            'phone_number.size': t('rest_keywords_phone_number'),
+            'phone_number.regex': t('mobile_number_numeric')
         };
 
         const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
     
         if (valid) {
-            userModel.signup(request_data, (_responseData) => {
+            authModel.signup(request_data, (_responseData) => {
                 common.response(res, _responseData);
             });
         }
@@ -60,7 +56,7 @@ class User {
         }
         const valid = middleware.checkValidationRules(req,res,request_data,rules,message, keywords)
         if(valid){
-            userModel.login(request_data, (_responseData) => {
+            authModel.login(request_data, (_responseData) => {
                 common.response(res, _responseData);
             });
         }
@@ -73,24 +69,31 @@ class User {
     // generate OTP Function
     verifyOTP(req, res) {
         var request_data = req.body;
-        userModel.verifyOTP(request_data, (_responseData) => {
+        authModel.verifyOTP(request_data, (_responseData) => {
             common.response(res, _responseData);
         });
     }
 
     validateOTP(req, res) {
         var request_data = req.body;
-        userModel.validateOTP(request_data, (_responseData) => {
+        authModel.validateOTP(request_data, (_responseData) => {
+            common.response(res, _responseData);
+        });
+    }
+    resendOTP(req, res) {
+        var request_data = req.body;
+        authModel.resendOTP(request_data, (_responseData) => {
             common.response(res, _responseData);
         });
     }
     // checkVerification status
     checkUserVerification(req, res) {
         var request_data = req.body;
-        userModel.checkUserVerification(request_data, (_responseData) => {
+        authModel.checkUserVerification(request_data, (_responseData) => {
             common.response(res, _responseData);
         });
     }
+
     // update user profile
     compeleteUserProfile(req, res) {
         try{        
@@ -102,12 +105,16 @@ class User {
         }
 
         let keywords={
-            'user_full_name': t('rest_keywords_user_full_name'),
-            'date_of_birth': t('rest_keywords_user_date_of_birth')
+            'user_id': t('rest_keywords_user_id'),
+            'fname': t('rest_keywords_user_fname'),
+            'lname': t('rest_keywords_user_lname'),
+            'address': t('rest_keywords_user_address'),
+            'gender': t('rest_keywords_gender'),
+            'dob': t('rest_keywords_user_date_of_birth'),
         }
         const valid = middleware.checkValidationRules(req,res,request_data,rules,message, keywords)
         if(valid){
-            userModel.compeleteUserProfile(request_data, (_responseData) => {
+            authModel.compeleteUserProfile(request_data, (_responseData) => {
                 common.response(res, _responseData);
             });
         }
@@ -150,7 +157,7 @@ class User {
             const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
         
             if (valid) {
-                userModel.forgotPassword(request_data, (_responseData) => {
+                authModel.forgotPassword(request_data, (_responseData) => {
                     common.response(res, _responseData);
                 });
             }
@@ -183,7 +190,7 @@ class User {
             const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
         
             if (valid) {
-                userModel.resetPassword(request_data, (_responseData) => {
+                authModel.resetPassword(request_data, (_responseData) => {
                     common.response(res, _responseData);
                 });
             }
@@ -200,11 +207,41 @@ class User {
         // });
     }
     changePassword(req, res) {
-        var request_data = req.body;
+        try{
+            var request_data = req.body;
 
-        userModel.changePassword(request_data, (_responseData) => {
-            common.response(res, _responseData);
-        });
+            const rules = validationRules.changePassword
+
+            let message={
+                required:req.language.required,
+                required: t('required'),
+                'old_password.min': t('passwords_min'),
+                'new_password.min': t('passwords_min')
+            }
+
+            let keywords={
+                'new_password': t('rest_keywords_password'),
+                'old_password': t('rest_keywords_password')
+            }
+
+            const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
+    
+        if (valid) {
+            authModel.changePassword(request_data, (_responseData) => {
+                common.response(res, _responseData);
+            });
+        }
+        }catch(error){
+            return common.response(res, {
+                code: response_code.OPERATION_FAILED,
+                message: t('rest_keywords_something_went_wrong')
+            });
+        }
+        // var request_data = req.body;
+
+        // userModel.changePassword(request_data, (_responseData) => {
+        //     common.response(res, _responseData);
+        // });
     }
 
 };
