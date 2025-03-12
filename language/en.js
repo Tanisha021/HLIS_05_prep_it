@@ -26,7 +26,24 @@ var message = {
         "rest_keywords_post_type": "Post Type",
         "rest_keywords_category_id": "Category ID",
         "rest_keywords_user_id": "User ID",
-        "rest_keywords_media_names": "Media Names"
+        "rest_keywords_media_names": "Media Names",
+
+        "item_id":"item_id is required",
+        "latitude": "Latitude is required",
+        "longitude": "Longitude is required",
+        "area_name": "Area Name is required",
+        "flat_number": "Flat Number is required",
+        "block_number": "Block Number is required",
+        "road_name": "Road Name is required",
+        "delivery_info": "Delivery Info is required",
+        "type_": "Type is required",
+        "user_id": "User ID is required",
+        "full_name": "Full Name is required",
+        "phone_number": "Phone Number is required",
+        "email_id": "Email ID is required",
+        "descp": "Description is required"
+
+
 }
 
 module.exports = message;

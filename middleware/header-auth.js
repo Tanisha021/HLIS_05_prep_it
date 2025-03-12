@@ -7,6 +7,7 @@ const en = require("../language/en");
 const hn = require("../language/hn");
 const ar = require("../language/ar");
 const lodash = require('lodash');
+var lib = require('cryptlib');
 
 class headerAuth{
 
@@ -14,17 +15,31 @@ class headerAuth{
         var api_key = (req.headers['api-key'] != undefined && req.headers['api-key'] != "" ? req.headers['api-key'] : '');
         if(api_key != ""){
             try{
-                if(api_key === process.env.API_KEY){
-                    console.log("✅ API Key Valid. Proceeding to next middleware...");
-
+                var api_dec = common.decryptPlain(api_key).replace(/\0/g, '').replace(/[^\x00-\xFF]/g, "");
+                console.log(api_dec);
+                console.log(api_dec === process.env.API_KEY);
+                if(api_dec === process.env.API_KEY){
+                    console.log("iF")
                     next();
                 } else{
+                    console.log("here");
                     const response_data = {
                         code: response_code.UNAUTHORIZED,
                         message: "Invalid API Key"
                     }
                     res.status(401).send(response_data);
                 }
+                // if(api_key === process.env.API_KEY){
+                //     console.log("✅ API Key Valid. Proceeding to next middleware...");
+
+                //     next();
+                // } else{
+                //     const response_data = {
+                //         code: response_code.UNAUTHORIZED,
+                //         message: "Invalid API Key"
+                //     }
+                //     res.status(401).send(response_data);
+                // }
 
             } catch(error){
                 console.log("⚠️ Error in validateApiKey:", error);
@@ -65,7 +80,7 @@ class headerAuth{
 
     async getRequestOwner(token){
         try{
-            console.log("here");
+            console.log("Getting user from token:", token);
             const selectQuery = `SELECT * FROM tbl_user WHERE token = ?`;
             const [owner] = await database.query(selectQuery, [token]);
             console.log(owner);
@@ -92,10 +107,12 @@ class headerAuth{
                     .add('ar', ar)
                     .add('hn', hn);
 
-            const byPassApi=['forgot-password', 'resendOTP', 'login', 'signup','complete-profile',
-                             'resend-otp','verify-otp','generate-otp', 'reset-password','change-password','check-verification'];
+            const byPassApi=['forgot-password', 'resendOTP', 'login', 'signup',
+                             'resend-otp','verify-otp', 'reset-password','check-verification'];
 
-            if(lodash.isEqual(headers["api-key"],process.env.API_KEY)){
+            var api_dec = common.decryptPlain(headers["api-key"]).replace(/\0/g, '').replace(/[^\x00-\xFF]/g, "");
+            // lodash.isEqual(headers["api-key"],process.env.API_KEY
+            if(api_dec === process.env.API_KEY){
                 let headerObj = new headerAuth();
                 req = headerObj.extractMethod(req);
                 console.log("Checking if API is bypassed:", byPassApi.includes(req.requestMethod));
@@ -112,9 +129,10 @@ class headerAuth{
                     }
 
                     try{
-                        console.log(token);
+                        // console.log("Checking token:", token);
                         const user = await headerObj.getRequestOwner(token);
-                        console.log(user);
+                        // console.log("User found:", user);
+                        // console.log(req.user_id  = user.user_id);
                         req.user_id  = user.user_id;
                         req.user = user;
                         return next();  
