@@ -11,54 +11,92 @@ const con = require('../config/database.js')
 
 const middleware = {
 
-    checkValidationRules:function(req,res,request,rules,message,keywords){
-        console.log(request);
-        console.log(rules);
-        console.log(keywords)
-        console.log('a')
-        const v = Validator.make(request,rules,message,keywords);
-        if(v.fails()){
-            const errors = v.getErrors();
-            console.log(errors);
-
-            var error = "";
-            for(var key in errors){
-                error = errors[key][0];
-                break;
+    checkValidationRules: function (req, res, request, rules, messages, keywords) {
+        // console.log("Original request:", request);
+        // console.log("Type of item_id:", typeof request.item_id);
+        // console.log("Validation rules:", rules);
+        // console.log("Validation keywords:", keywords);
+    
+        // Ensure all request fields are strings
+        Object.keys(request).forEach(key => {
+            request[key] = request[key] !== undefined ? String(request[key]) : "";
+        });
+    
+        console.log("Modified request (after type conversion):", request);
+    
+        const v = Validator.make(request, rules, messages);
+    
+        try {
+            if (v.fails()) {
+                console.log("Validation failed");
+                const errors = v.getErrors();
+                console.log(errors);
+    
+                let errorMessage = "";
+                for (let key in errors) {
+                    errorMessage = errors[key][0]; // Get first error message
+                    break;
+                }
+    
+                console.log("Error message:", errorMessage);
+    
+                const response_data = {
+                    code: response_code.OPERATION_FAILED,
+                    message: errorMessage
+                };
+    
+                console.log(response_data);
+    
+                res.send(common.encrypt(response_data));
+    
+                return false;
+            } else {
+                console.log("Validation passed");
+                return true;
             }
-            console.log('c');
-            
-            response_data = {
-                code:response_code.OPERATION_FAILED,
-                message:error
-            }
-            console.log(response_data);
-            
-            // common.response(res, response_data);
-            // res.status(200).send(response_data);
-            res.send(common.encrypt(response_data));
-
+        } catch (error) {
+            console.error("Validation error:", error);
             return false;
-        }else{
-            console.log('b')
-            return true;
         }
+    },    
+        
+    getMessage: function (language, message, callback) {
+        console.log(language);
+        
+        localizify.add('en', en)
+            .add('ar', ar)
+            .add('hn', hn)
+            .setLocale(language);
+        //console.log(message);
+        let translateMessage = t(message.keyword);
+        console.log(message.content, 'message content');
+        
+        if (message.content) {
+            Object.keys(message.content).forEach(key => {
+                translateMessage = translateMessage.replace(`{${key}}`, message.content[key]);
+            });
+        }
+        callback(translateMessage);
     },
-
-    send_response :function(req, res,code,message,data){
+    
+    send_response :function(req, res,message){
         console.log(req.lang);
         
         this.getMessage(req.lang,message,function(translated_message){
             console.log(translated_message);
             
-            if (data == null) {
+            if (message.data == null) {
                 response_data = {
-                    code :code,
+                    code : message.code,
                     message:translated_message,
-                    data: data 
+                    data: message.data 
                 }
                 
-                res.status(200).send(response_data);
+                // res.status(200).send(response_data);
+                const response = common.encrypt(response_data);
+        console.log(response);
+        
+        res.status(200).send(response);
                 // middleware.encryption(response_data,function(response){
                     // res.status(200);
                     // res.send(response);    
@@ -121,7 +159,9 @@ const middleware = {
 
 
     callback();
-    }
+    },
+
+   
 }
 module.exports = middleware;
 

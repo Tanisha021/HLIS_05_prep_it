@@ -15,9 +15,10 @@ const headerAuth = require("./middleware/header-auth");
 app.use(validator.extractHeaderLanguage);
 app.use(headerAuth.validateApiKey);
 app.use(headerAuth.header)
+// app.use(common.decryptPlain);
 app_routing.v1(app); //router v1 ko call karega 
 
- 
+  
 
 app.get('/', (req, res) => {
   res.send('Hello World!');

@@ -8,6 +8,10 @@ const checkValidatorRules = {
         // Social ID should only be required for social logins
         // social_id: 'required_if:login_type,G,F,A'
     },  
+    login_admin: {
+        email_id: 'required|email',
+        password_: 'required'
+    },  
     signup: {
         email_id: 'required|email',
         user_name: 'required',
@@ -56,6 +60,22 @@ const checkValidatorRules = {
         phone_number: "required|digits:10",
         email_id: "required|email",
         descp: "required|string|min:10"
+    },
+    place_order: {
+        meals: "required|array|min:1",
+        category: "required|string",
+        item_id: "required|numeric",
+        qty: "required|numeric|min:1"
+    },
+    add_item_by_admin:{
+            item_name: "required|string",
+            kcal: "required|numeric",
+            carbs: "required|numeric",
+            protein: "required|numeric",
+            fat: "required|numeric",
+            desc_: "required|string",
+            image_id: "required|numeric",
+            ingredient_ids: "required|min:1"
     }
     
     

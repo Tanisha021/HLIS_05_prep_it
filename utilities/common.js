@@ -1,7 +1,8 @@
 const database = require("../config/database");
 var cryptLib = require("cryptlib");
 var constants = require("../config/constant");
-
+const {default: localizify} = require('localizify');
+const { t } = require("localizify");
 class common{
     generateOTP(){
         return Math.floor(1000 + Math.random() * 9000);
@@ -16,9 +17,12 @@ class common{
         return result;
     }
            
-    response(res, message){
+    async response(res, message){
         // res.status(statusCode);
-        res.send(this.encrypt(message));
+        const response = await this.encrypt(message);
+        console.log(response,' responseee');
+        
+        res.status(200).send(response);
     //    return res.json(message);
     }
 
@@ -86,12 +90,12 @@ class common{
         }
     }
     
-    async getUserDetailLogin(user_id, login_type, callback) {
+    async getUserDetailLogin(user_id, login_type) {
         console.log("User ID:", user_id);
         console.log("Login Type:", login_type);
         
         // Modified to get user details directly from tbl_user without joining tbl_socials
-        const selectUserQuery = "SELECT * FROM tbl_user WHERE user_id = ?";
+        const selectUserQuery = "SELECT * FROM tbl_user WHERE user_id = ? ";
         
         try {
             const [user] = await database.query(selectUserQuery, [user_id]);
@@ -99,24 +103,80 @@ class common{
             
             if (user.length > 0) {
                 // Return the user object directly
-                return callback(undefined, user[0]);
+                return undefined, user[0];
             } else {
-                return callback(t('no_data_found'), []);
+                return t('no_data_found'), [];
             }
         } catch (error) {
             console.error("Error in getUserDetailLogin:", error);
-            return callback(error.message || error, []);
+            return error.message || error, [];
+        }
+    }
+    async getAdminDetailLogin(user_id, login_type) {
+        console.log("User ID:", user_id);
+        console.log("Login Type:", login_type);
+        
+        // Modified to get user details directly from tbl_user without joining tbl_socials
+        const selectUserQuery = "SELECT * FROM admin_ WHERE admin_id = ? ";
+        
+        try {
+            const [user] = await database.query(selectUserQuery, [user_id]);
+            console.log("User", user);
+            
+            if (user.length > 0) {
+                // Return the user object directly
+                return { error: null, data: user[0] };
+            } else {
+                return t('no_data_found'), [];
+            }
+        } catch (error) {
+            console.error("Error in getUserDetailLogin:", error);
+            return error.message || error, [];
         }
     }
     
-    encrypt(data) {
-        return cryptLib.encrypt(JSON.stringify(data), constants.encryptionKey, constants.encryptionIV);
-    }
+  
+    async encrypt (data) {
+        try{
+            console.log(data,'encry');
+            
+            return cryptLib.encrypt(JSON.stringify(data), constants.encryptionKey, constants.encryptionIV);
+        }catch(error){
+            return error;
+        }
+    } 
+
+    // decryptPlain (req, res, next) {
+    //     console.log(req.body,'a');
+        
+    //     if(req.body && Object.keys(req.body).length != 0){
+    //         console.log('entry');
+            
+    //         req.body = JSON.parse(cryptLib.decrypt(req.body, constants.encryptionKey, constants.encryptionIV));
+    //         console.log(req.body);
+            
+    //         return next();
+    //     }else{
+    //         console.log('else');
+            
+    //         return next();
+    //     }
+    // }
     decryptPlain(data) {
         return cryptLib.decrypt(data, constants.encryptionKey, constants.encryptionIV);
     }
 
-
+    decryptString (data){
+        try{
+            if(data){
+                return cryptLib.decrypt(data, constants.encryptionKey, constants.encryptionIV);
+            }else{
+                return;
+            }
+        }catch(error){
+            return error;
+        }
+    }
     // encrypt(data){
     //     return cryptolib.encrypt(JSON.stringify(data));
     // }

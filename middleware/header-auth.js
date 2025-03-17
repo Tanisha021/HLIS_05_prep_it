@@ -15,7 +15,7 @@ class headerAuth{
         var api_key = (req.headers['api-key'] != undefined && req.headers['api-key'] != "" ? req.headers['api-key'] : '');
         if(api_key != ""){
             try{
-                var api_dec = common.decryptPlain(api_key).replace(/\0/g, '').replace(/[^\x00-\xFF]/g, "");
+                var api_dec = common.decryptString(api_key).replace(/\0/g, '').replace(/[^\x00-\xFF]/g, "");
                 console.log(api_dec);
                 console.log(api_dec === process.env.API_KEY);
                 if(api_dec === process.env.API_KEY){
@@ -60,7 +60,7 @@ class headerAuth{
         }
     }
 
-    extractMethod(request){
+    extractMethod(request){ 
         let url = request.originalUrl;
         let segment = []
         url.split('/').forEach(element => {
@@ -93,10 +93,26 @@ class headerAuth{
             throw error;
         }
     }
+    async getRequestAdmin(token){
+        try{
+            console.log("Getting user from token:", token);
+            const selectQuery = `SELECT * FROM admin_ WHERE token = ?`;
+            const [owner] = await database.query(selectQuery, [token]);
+            console.log(owner);
+            if(owner.length > 0){
+                return owner[0];
+            }else{
+                throw new Error("Invalid access token");
+            }
+        }catch (error) {
+            throw error;
+        }
+    }
 
     async header(req,res,next){
         try{
             let headers = req.headers;
+            
             var supportedLanguages = ['en', 'hn', 'ar'];
             let lng = (headers['accept-language'] && supportedLanguages.includes(headers['accept-language'])
                 ? headers['accept-language']
@@ -107,15 +123,11 @@ class headerAuth{
                     .add('ar', ar)
                     .add('hn', hn);
 
-            const byPassApi=['forgot-password', 'resendOTP', 'login', 'signup',
+            const byPassApi=['forgot-password', 'resendOTP', 'login', 'signup','login_admin',
                              'resend-otp','verify-otp', 'reset-password','check-verification'];
 
-            var api_dec = common.decryptPlain(headers["api-key"]).replace(/\0/g, '').replace(/[^\x00-\xFF]/g, "");
-            // lodash.isEqual(headers["api-key"],process.env.API_KEY
-            if(api_dec === process.env.API_KEY){
-                let headerObj = new headerAuth();
-                req = headerObj.extractMethod(req);
-                console.log("Checking if API is bypassed:", byPassApi.includes(req.requestMethod));
+                             let headerObj = new headerAuth();
+                             req = headerObj.extractMethod(req);
 
                 if(byPassApi.includes(req.requestMethod)){
                     return next();
@@ -129,26 +141,38 @@ class headerAuth{
                     }
 
                     try{
-                        // console.log("Checking token:", token);
-                        const user = await headerObj.getRequestOwner(token);
+
+                        console.log("Checking token:", token);
+                        let user;
+                
+                        // Determine whether request is for 'admin' or 'user'
+                        if (req.requestedModule === 'admin') {
+                            user = await headerObj.getRequestAdmin(token);
+                            console.log("Admin found:", user);
+                            req.user_id = user.admin_id; // Assign admin_id if admin
+                        } else {
+                            user = await headerObj.getRequestOwner(token);
+                            console.log("User found:", user);
+                            req.user_id = user.user_id;
+                        }
                         // console.log("User found:", user);
-                        // console.log(req.user_id  = user.user_id);
-                        req.user_id  = user.user_id;
+                        // console.log("User ID:", user.user_id);
+                        // console.log("Admin ID:", req.user_id)
+                        // console.log("User ID:", user.admin_id);
+                        // req.user_id = user.user_id;
                         req.user = user;
-                        return next();  
+                        console.log("Assigned User/Admin ID:", req.user_id);
+                        return next();
                     }catch (error) {
+                        console.log(error);
+                        
                         return res.status(401).json({
                             code: response_code.UNAUTHORIZED,
                             message: "Invalid Access Token"
                         });
                     }
                 }
-            }else {
-                return res.status(401).json({
-                    code: response_code.UNAUTHORIZED,
-                    message: "Invalid API key",
-                });
-            }
+         
         }catch (error) {
             return res.status(500).json({
                 code: response_code.UNAUTHORIZED,

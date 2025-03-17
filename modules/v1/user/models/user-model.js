@@ -149,11 +149,97 @@ class UserModel {
         }
     }
 
+    async listNotifications(user_id){
+        try{
+            const query = ` `;
+            const [notifications] = await database.query(query, [user_id]);
+            console.log(notifications);
+            
+            if(notifications.length === 0){
+                return {
+                    code: response_code.NOT_FOUND,
+                    message: "NO NOTIFICATION FOUND",
+                    data: []
+                };
+            }
 
-    async logout(request_data,callback){
+            return {
+                code: response_code.SUCCESS,
+                    message: "NOTIFICATIONS",
+                    data: notifications
+            };
+
+        }catch(error){
+            return {
+                code: response_code.OPERATION_FAILED,
+                message: "ERROR",
+                data: error.message
+            };
+        }
+    }
+
+    async place_order(request_data,user_id){
+        try{
+            const meals = request_data.meals;
+            const category = request_data.category;
+
+            if(!meals||meals.length===0){
+                return {
+                    code: response_code.OPERATION_FAILED,
+                    message: "No meals provided to place order"
+                };
+            }
+
+            const now = new Date();
+            const delivery_time_start = now.toTimeString().split(' ')[0]; 
+    
+            const deliveryEndDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); 
+            const delivery_time_end = deliveryEndDate.toTimeString().split(' ')[0]; 
+            const order_data = {
+                user_id: user_id,
+                delivery_id: request_data.delivery_id,
+                note: request_data.note || null,
+                status_: 'confirmed',
+                delivery_time_start: delivery_time_start,
+                delivery_time_end: delivery_time_end,
+                total_qty: 0
+            };
+            const [orderRes] = await database.query(`INSERT INTO tbl_order SET ?`, [order_data]);
+            const order_id = orderRes.insertId;
+
+            for (const meal of meals) {
+                const meal_data = {
+                    order_id: order_id,
+                    item_id: meal.item_id,
+                    qty: meal.qty || 1,
+                    category: category,
+                    user_id: user_id
+                };
+                await database.query(`INSERT INTO tbl_meal SET ?`, [meal_data]);
+            }
+
+            return {
+                code: response_code.SUCCESS,
+                message: "ORDER PLACED SUCCESSFULLY",
+                data: { order_id: order_id }
+            };
+    
+        }catch (error) {
+            return callback(common.encrypt({
+                code: response_code.OPERATION_FAILED,
+                message: "ERROR PLACING ORDER",
+                data: error.message
+            }));
+        }
+    }
+
+    async logout(request_data,user_id){
         try{
             const select_user_query = "SELECT * FROM tbl_user WHERE user_id = ? and is_login = 1";
-            const [info] = await database.query(select_user_query, [request_data.user_id]);
+            console.log(user_id)
+            const [info] = await database.query(select_user_query, [user_id]);
+            console.log(info);
+            
             if(info.length>0){
                 const updatedUserQuery="update tbl_device_info set device_token = '', updated_at = NOW() where user_id = ?"
                 const updatedTokenQuery="update tbl_user set token = '', is_login = 0 where user_id = ?"
@@ -166,63 +252,55 @@ class UserModel {
             const getUserQuery = "SELECT * FROM tbl_user WHERE user_id = ?";
             const [updatedUser] = await database.query(getUserQuery, [user_id]);
     
-            return callback({
+            return {
                 code: response_code.SUCCESS,
                 message: t('logout_success'),
                 data: updatedUser[0]
-            });
+            };
         }else{
-            return callback({
+            return {
                 code: response_code.NOT_FOUND,
                 message: t('user_not_found_or_logged_out')
-            });
+            };
         }
         }catch(error){
-            return callback({
+            return {
                 code: response_code.OPERATION_FAILED,
                 message: t('some_error_occurred'),
                 data: error
-            })
+            };
         }
     }
 
-    async delete(request_data,user_id,callback){
+    async delete(request_data,user_id){
         try{
-            const selectQuery = "SELECT * FROM tbl_user WHERE user_id = ? and is_login = 1";
-            const [info] = await database.query(selectQuery, [user_id]);
-            if(info.length === 0){
-                return callback({
-                    code: response_code.OPERATION_FAILED,
-                    message: "User not found or not logged in"
-                });
-            }
-            const selectUserQuery = "SELECT * FROM tbl_user WHERE user_id = ? AND is_deleted = 0";
-            const [user] = await database.query(selectUserQuery, [user_id]);
-    
-            if (!user.length) {
-                return callback({
-                    code: response_code.NOT_FOUND,
-                    message: t('user_already_deleted')
-                });
-            }
-            const deleteQuery = "update tbl_user set is_deleted = 1,is_active =0,is_login=0 where user_id = ?"
-            await database.query(deleteQuery, [user_id]);
+            console.log(user_id);
+            const queries = [
+                `UPDATE tbl_user SET is_deleted = 1, is_active = 0, token = null, is_login = 0 WHERE user_id =${user_id}`,
+                `UPDATE tbl_otp SET is_deleted = 1, is_active = 0, verify = 0 WHERE user_id = ${user_id}`,
+                `UPDATE tbl_order SET is_deleted = 1, is_active = 0 WHERE user_id = ${user_id}`,
+                `UPDATE tbl_meal SET is_deleted = 1, is_active = 0 WHERE user_id = ${user_id}`,
+                `UPDATE tbl_device_info SET is_deleted = 1, is_active = 0 WHERE user_id = ${user_id}`,
+                `UPDATE tbl_notification SET is_deleted = 1, is_active = 0 WHERE user_id = ${user_id}`,
+                `UPDATE tbl_help_support SET is_deleted = 1, is_active = 0 WHERE user_id = ${user_id}`
+            ];
 
-            const deleteReviewQuery = "UPDATE tbl_ratings_review SET is_deleted = 1, is_active=0 WHERE user_id = ?";
-            await database.query(deleteReviewQuery, [user_id]);
-    
-            const deleteFavSPQuery = "UPDATE tbl_user_fav_sp SET is_deleted = 1 WHERE user_id = ?";
-            await database.query(deleteFavSPQuery, [user_id]);
-    
-            const deleteFavVoucherQuery = "UPDATE tbl_user_fav_voucher SET is_deleted = 1 WHERE user_id = ?";
-            await database.query(deleteFavVoucherQuery, [user_id]);
+            for (const query of queries) {
+                await database.query(query, [user_id]);
+            }
+
+            return {
+                code: response_code.SUCCESS,
+                message: "ACCOUNT DELETED SUCCESSFULLY"
+            };
 
         }catch (error) {
+            console.log(user_id);
             console.log(error);
-            return callback({
+            return {
                 code: response_code.OPERATION_FAILED,
                 message: error
-            });
+            };
         }
     }
 
