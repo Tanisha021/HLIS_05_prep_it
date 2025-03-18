@@ -163,7 +163,12 @@ class common{
     //     }
     // }
     decryptPlain(data) {
-        return cryptLib.decrypt(data, constants.encryptionKey, constants.encryptionIV);
+        // console.log('data======c',data);
+        
+        const decData = cryptLib.decrypt(data, constants.encryptionKey, constants.encryptionIV);
+        // console.log('decData======c',decData);
+        return decData
+        
     }
 
     decryptString (data){

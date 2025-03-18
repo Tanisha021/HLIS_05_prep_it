@@ -18,9 +18,17 @@ const middleware = {
         // console.log("Validation keywords:", keywords);
     
         // Ensure all request fields are strings
-        Object.keys(request).forEach(key => {
-            request[key] = request[key] !== undefined ? String(request[key]) : "";
-        });
+        console.log('validation',request);
+
+        // Object.keys(request).forEach(key => {
+        //     if (typeof request[key] !== "number") {
+        //         request[key] = request[key] !== undefined ? String(request[key]) : "";
+        //     }
+        // });
+        
+        // Object.keys(request).forEach(key => {
+        //     request[key] = request[key] !== undefined ? String(request[key]) : "";
+        // });
     
         console.log("Modified request (after type conversion):", request);
     

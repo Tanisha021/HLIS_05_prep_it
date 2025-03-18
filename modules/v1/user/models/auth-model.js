@@ -294,12 +294,12 @@ class UserModel {
                 }
     
                 let updatedData = {};
-                let nextStep = parseInt(userResult.isstep_);  // Convert to number
+                let nextStep = userResult.isstep_;  // Convert to number
     
                 console.log("Current step (as number):", nextStep);
     
                 // Compare with numbers, not strings
-                if(nextStep === 2){
+                if(nextStep === '2'){
                     if (!request_data.latitude || !request_data.longitude) {
                         return callback({
                             code: response_code.OPERATION_FAILED,
@@ -316,7 +316,7 @@ class UserModel {
                         isstep_: '3'
                     };
                     nextStep = 3;
-                }else if(nextStep === 3){
+                }else if(nextStep === '3'){
                     if (!request_data.goal_id) {
                         return callback({
                             code: response_code.OPERATION_FAILED,
@@ -328,7 +328,7 @@ class UserModel {
                         isstep_: '4'
                     };
                     nextStep = 4;
-                }else if(nextStep === 4){
+                }else if(nextStep === '4'){
                     if (!request_data.gender || !request_data.current_weight_kg || 
                         !request_data.target_weight_kg || !request_data.current_height_cm || 
                         !request_data.activity_level) {

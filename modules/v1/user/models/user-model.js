@@ -140,7 +140,7 @@ class UserModel {
         }
     }
 
-    async listNotifications(user_id){
+    async listNotifications(request_data,user_id){
         try{
             const query = `SELECT * from tbl_notification where user_id = ? `;
             const [notifications] = await database.query(query, [user_id]);
@@ -395,7 +395,7 @@ class UserModel {
         try{
             const duration = request_data.duration_in_months;
             console.log("----------",duration)
-            if (!['3', '6', '9', '12'].includes(duration)) {
+            if (![3, 6, 9, 12].includes(duration)) {
                 console.log("--------2-",duration)
                 return {
                     code: response_code.OPERATION_FAILED,

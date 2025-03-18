@@ -11,7 +11,7 @@ var lib = require('cryptlib');
 
 class headerAuth{
 
-    validateApiKey(req,res,next){
+    validateApiKey(req,res,next){        
         var api_key = (req.headers['api-key'] != undefined && req.headers['api-key'] != "" ? req.headers['api-key'] : '');
         if(api_key != ""){
             try{

@@ -12,7 +12,7 @@ const updateOrderStatus = async () => {
         // First update: Confirmed -> In Preparation (1 hour before delivery starts)
         const confirmToPrep = `
             UPDATE tbl_order 
-            SET status_ = 'InPreparation', updated_at = NOW() 
+            SET status_ = 'in_preparation', updated_at = NOW() 
             WHERE status_ = 'confirmed' 
             AND is_active = 1 
             AND is_deleted = 0
@@ -26,7 +26,7 @@ const updateOrderStatus = async () => {
         const prepToOfd = `
             UPDATE tbl_order 
             SET status_ = 'ofd', updated_at = NOW() 
-            WHERE status_ = 'InPreparation' 
+            WHERE status_ = 'in_preparation' 
             AND is_active = 1 
             AND is_deleted = 0
             AND NOW() >= delivery_time_start

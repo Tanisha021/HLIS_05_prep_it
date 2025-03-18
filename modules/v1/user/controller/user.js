@@ -333,25 +333,28 @@ class User {
     async listNotifications(req, res) {
         try{
             // console.log("fghjk",req.body);
-            console.log('aaa');
+            // console.log('aaa');
             
-            let request_data = {};
+            // let request_data = {};
     
-            // Decrypt only if req.body is not empty
-            if (req.body && Object.keys(req.body).length > 0) {
-                const decryptedData = common.decryptString(req.body);
+            // // Decrypt only if req.body is not empty
+            // if (req.body && Object.keys(req.body).length > 0) {
+            //     const decryptedData = common.decryptString(req.body);
                 
-                // Ensure decrypted data is a valid JSON string before parsing
-                if (typeof decryptedData === "string" && decryptedData.trim() !== "") {
-                    request_data = JSON.parse(decryptedData);
-                } else {
-                    return common.response(res, {
-                        code: response_code.OPERATION_FAILED,
-                        message: "Invalid decrypted data format"
-                    });
-                }
+            //     // Ensure decrypted data is a valid JSON string before parsing
+            //     if (typeof decryptedData === "string" && decryptedData.trim() !== "") {
+            //         request_data = JSON.parse(decryptedData);
+            //     } else {
+            //         return common.response(res, {
+            //             code: response_code.OPERATION_FAILED,
+            //             message: "Invalid decrypted data format"
+            //         });
+            //     }
+            // }
+            const request_data=req.body;
+            if (Object.keys(request_data).length != 0) {
+                request_data = JSON.parse(common.decryptString(req.body));
             }
-    
             console.log("Request Data after decryption:", request_data);
             const rules = validationRules.listNotifications;
 
@@ -542,7 +545,8 @@ class User {
         try {
             let request_data = common.decryptPlain(req.body);
             
-            // Ensure request_data is an object
+            // // Ensure request_data is an object
+            console.log("Request Data:", request_data);
             if (typeof request_data === 'string') {
                 try {
                     request_data = JSON.parse(request_data);
@@ -553,6 +557,7 @@ class User {
                     });
                 }
             }
+            console.log("Request Data:", request_data);
             
             // Validate meals
             if (!request_data.meals || !Array.isArray(request_data.meals)) {
@@ -580,22 +585,23 @@ class User {
             
             // Create a copy of request_data for validation to avoid modifying the original
             const validation_data = {...request_data};
-            
+            console.log("A", validation_data);
+            console.log("B", request_data);
             const valid = middleware.checkValidationRules(req, res, validation_data, rules, message, keywords);
             console.log("Valid", valid);
             if (!valid) return;
             
-            // Ensure meals is still an array after validation
-            if (typeof request_data.meals === 'string') {
-                try {
-                    request_data.meals = JSON.parse(original_meals);
-                } catch (e) {
-                    console.error("Error restoring original meals:", e);
-                }
-            }
+            // // Ensure meals is still an array after validation
+            // if (typeof request_data.meals === 'string') {
+            //     try {
+            //         request_data.meals = JSON.parse(original_meals);
+            //     } catch (e) {
+            //         console.error("Error restoring original meals:", e);
+            //     }
+            // }
             
-            // Add original meals as a backup
-            request_data.original_meals = original_meals;
+            // // Add original meals as a backup
+            // request_data.original_meals = original_meals;
             
             // Call model function with fixed data
             const responseData = await userModel.place_order(request_data, req.user_id);
@@ -612,8 +618,12 @@ class User {
     
     async displayHomePage(req, res) {
         try{
-            const request_data = JSON.parse(common.decryptPlain(req.body));
-
+            // const request_data = JSON.parse(common.decryptPlain(req.body));
+            const request_data=req.body;
+            if (Object.keys(request_data).length != 0) {
+                request_data = JSON.parse(common.decryptString(req.body));
+            }
+            console.log("Request Data after decryption:", request_data);
             console.log(request_data);
             const rules = validationRules.displayHomePage;
 
@@ -635,14 +645,13 @@ class User {
 
     async categoryWiseItems(req, res) {
         try{
-            let decryptedData = common.decryptString(req.body);
+            // let decryptedData = common.decryptString(req.body);
         
-            // If decryption fails or returns an error, default to an empty object
-            if (typeof decryptedData !== "string" || decryptedData.trim() === "") {
-                decryptedData = "{}"; // Ensures JSON.parse doesn't throw an error
+            const request_data=req.body;
+            if (Object.keys(request_data).length != 0) {
+                request_data = JSON.parse(common.decryptString(req.body));
             }
-    
-            const request_data = JSON.parse(decryptedData);
+            console.log("Request Data after decryption:", request_data);
 
         console.log(request_data);
         const rules = validationRules.categoryWiseItems;

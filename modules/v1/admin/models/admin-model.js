@@ -94,22 +94,22 @@ class AdminModel {
             const [insertResult] = await database.query(query, [item_data]);
 
             const item_id = insertResult.insertId;
-            console.log("show",request_data.ingredient_id)
-            // Convert string to an array if needed
-            if (typeof request_data.ingredient_id === "string") {
-                request_data.ingredient_id = request_data.ingredient_id.split(",").map(id => parseInt(id.trim(), 10));
-            }
-            console.log("show2",request_data.ingredient_id)
-            if (Array.isArray(request_data.ingredient_id) && request_data.ingredient_id.length > 0) {
-                const ingredientValues = request_data.ingredient_id.map(ingredient_id => [ingredient_id, item_id]);
-                const insertIngredientQuery = `INSERT INTO ing_item_rel (ing_id, item_id) VALUES ?`;
-                await database.query(insertIngredientQuery, [ingredientValues]);
-            }
-            // if(request_data.ingredient_id && request_data.ingredient_id.length > 0){
+            // console.log("show",request_data.ingredient_id)
+            // // Convert string to an array if needed
+            // if (typeof request_data.ingredient_id === "string") {
+            //     request_data.ingredient_id = request_data.ingredient_id.split(",").map(id => parseInt(id.trim(), 10));
+            // }
+            // console.log("show2",request_data.ingredient_id)
+            // if (Array.isArray(request_data.ingredient_id) && request_data.ingredient_id.length > 0) {
             //     const ingredientValues = request_data.ingredient_id.map(ingredient_id => [ingredient_id, item_id]);
             //     const insertIngredientQuery = `INSERT INTO ing_item_rel (ing_id, item_id) VALUES ?`;
             //     await database.query(insertIngredientQuery, [ingredientValues]);
             // }
+            if(request_data.ingredient_id && request_data.ingredient_id.length > 0){
+                const ingredientValues = request_data.ingredient_id.map(ingredient_id => [ingredient_id, item_id]);
+                const insertIngredientQuery = `INSERT INTO ing_item_rel (ing_id, item_id) VALUES ?`;
+                await database.query(insertIngredientQuery, [ingredientValues]);
+            }
             return {
                 code: response_code.SUCCESS,
                 message: "Item and ingredients added successfully",
@@ -208,15 +208,13 @@ class AdminModel {
 
         async delete_item(request_data){
             try{
-                console.log("Request Data:", request_data);
-                const item_id = parseInt(request_data.item_id, 10);
-                console.log("Item ID:", item_id);
+                const item_id = request_data.item_id;
     
                 if (!item_id) {
-                    return callback(common.encrypt({
+                    return {
                         code: response_code.BAD_REQUEST,
                         message: "Item ID is required"
-                    }));
+                    };
                 }
                 // Check if the item exists and is active
                 const checkQuery = `SELECT * FROM tbl_item WHERE item_id = ? AND is_deleted = 0`;
