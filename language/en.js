@@ -41,7 +41,9 @@ var message = {
         "full_name": "Full Name is required",
         "phone_number": "Phone Number is required",
         "email_id": "Email ID is required",
-        "descp": "Description is required"
+        "descp": "Description is required",
+        "code_id": "Code ID is required",
+        "user_name": "User Name is required"
 
 
 }

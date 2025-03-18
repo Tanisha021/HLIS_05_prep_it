@@ -1,3 +1,5 @@
+const { phone_number } = require("../language/en");
+
 const checkValidatorRules = {
 
     login: {
@@ -16,7 +18,15 @@ const checkValidatorRules = {
         email_id: 'required|email',
         user_name: 'required',
         password_: 'required_if:signup_type,S|min:8',
-        phone_number: 'string|size:10|regex:/^[0-9]{10}$/'
+        phone_number: 'string|size:10|regex:/^[0-9]{10}$/',
+        code_id: 'required|numeric',
+    },
+    validateOTP:{
+        phone_number: 'required',
+        otp: 'required'
+    },
+    resendOTP:{
+        email_id: 'required|email',
     },
     forgotPassword:{
         email_id: "required|email"
@@ -62,10 +72,11 @@ const checkValidatorRules = {
         descp: "required|string|min:10"
     },
     place_order: {
+        delivery_id: "required|numeric",
         meals: "required|array|min:1",
         category: "required|string",
-        item_id: "required|numeric",
-        qty: "required|numeric|min:1"
+        // item_id: "required|numeric",
+        // qty: "required|numeric|min:1"
     },
     add_item_by_admin:{
             item_name: "required|string",
@@ -73,9 +84,12 @@ const checkValidatorRules = {
             carbs: "required|numeric",
             protein: "required|numeric",
             fat: "required|numeric",
-            desc_: "required|string",
+            about: "required|string",
             image_id: "required|numeric",
-            ingredient_ids: "required|min:1"
+            ingredient_id: "required|min:1"
+    },
+    subscribe:{
+        duration_in_months: "required|numeric",
     }
     
     

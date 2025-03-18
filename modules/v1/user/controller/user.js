@@ -9,24 +9,30 @@ const {default: localizify} = require('localizify');
 const validationRules  = require('../../../validation_rules');
 const middleware = require("../../../../middleware/validators");
 const { t } = require("localizify");
+const { email_id } = require("../../../../language/en");
 
 
 class User {
     signup(req, res) {
+        // { "user_name": "rakhi", "email_id": "ra@example.com", "phone_number": "6214872340", "code_id": 1, "password_": "mypassword1", "device_type": "Android", "os_version": "13.0", "app_version": "1.2.0", "time_zone": "2025-03-10T10:30:00Z" }
         const request_data = JSON.parse(common.decryptPlain(req.body));
         const rules = validationRules.signup;
         let message = {
             required: req.language.required,
-            email: t('email'),
+            email_id: t('email'),
             'phone_number.regex': t('mobile_number_numeric'),
-            'passwords.min': t('passwords_min')
+            'passwords.min': t('passwords_min'),
+            'code_id': t('code_id'),
+            'user_name': t('user_name')
         };
     
         let keywords = {
             'password_': t('rest_keywords_password'),
             'email_id': t('email'),
             'phone_number.size': t('rest_keywords_phone_number'),
-            'phone_number.regex': t('mobile_number_numeric')
+            'phone_number.regex': t('mobile_number_numeric'),
+            'code_id': t('code_id'),
+            'user_name': t('user_name')
         };
 
         const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
@@ -88,32 +94,71 @@ class User {
         }
 
     }
-    // generate OTP Function
-    verifyOTP(req, res) {
-        // var request_data = req.body;
-        const request_data = JSON.parse(common.decryptPlain(req.body));
-        authModel.verifyOTP(request_data, (_responseData) => {
-            common.response(res, _responseData);
-        });
-    }
 
     validateOTP(req, res) {
+        // {
+        //     "user_id": 1,
+        //     "otp": 7652
+        //   }
+          
         // var request_data = req.body;
         const request_data = JSON.parse(common.decryptPlain(req.body));
-        authModel.validateOTP(request_data, (_responseData) => {
-            common.response(res, _responseData);
-        });
+        const rules = validationRules.validateOTP;
+        let message = {
+            required: req.language.required,
+            'phone_number.regex': t('mobile_number_numeric'),
+            'otp': t('otp')
+        };
+    
+        let keywords = {
+            'phone_number.regex': t('mobile_number_numeric'),
+            'otp': t('otp')
+        };
+
+        const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
+    
+        if (valid) {
+            authModel.validateOTP(request_data, (_responseData) => {
+                common.response(res, _responseData);
+            });
+        }
+        // const request_data = JSON.parse(common.decryptPlain(req.body));
+        // authModel.validateOTP(request_data, (_responseData) => {
+        //     common.response(res, _responseData);
+        // });
     }
     resendOTP(req, res) {
         // var request_data = req.body;
         const request_data = JSON.parse(common.decryptPlain(req.body));
-        authModel.resendOTP(request_data, (_responseData) => {
-            common.response(res, _responseData);
-        });
+        const rules = validationRules.validateOTP;
+        let message = {
+            required: req.language.required,
+            email_id: t('email')
+        };
+    
+        let keywords = {
+            email_id: t('email'),
+        };
+
+        const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
+    
+        if (valid) {
+            authModel.validateOTP(request_data, (_responseData) => {
+                common.response(res, _responseData);
+            });
+        }
+        // const request_data = JSON.parse(common.decryptPlain(req.body));
+        // authModel.resendOTP(request_data, (_responseData) => {
+        //     common.response(res, _responseData);
+        // });
     }
 
     // update user profile
     completeUserProfile(req, res) {
+        // {"latitude": 23.0225, "longitude": 72.5714}
+          //{ "goal_id": 4}
+        //{ "gender": "F","current_weight_kg": 60, "target_weight_kg": 65, "current_height_cm": 165, "activity_level": "intermediate"}
+
         try{        
             // const request_data = req.body;
             const request_data = JSON.parse(common.decryptPlain(req.body));
@@ -155,6 +200,9 @@ class User {
     }
 
     forgotPassword(req, res) {
+        // {
+        //     "email_id":"ra@example.com"
+        // }
         try{
             // var request_data = req.body;
             const request_data = JSON.parse(common.decryptPlain(req.body));
@@ -189,6 +237,13 @@ class User {
        
     }
     async resetPassword(req, res) {
+        // {
+        //     "user_id": 1,
+        //     "email_id":"ra@example.com",
+        //     "password_": "mypassword2"
+        
+        // }
+        
         try{
             // var request_data = req.body;
             const request_data = JSON.parse(common.decryptPlain(req.body));
@@ -196,8 +251,8 @@ class User {
             // let message = req.language.required;
             let message = {
                 required: req.language.required,
-                email: t('email'),
-                'passwords.min': t('passwords_min')
+                email_id: t('email'),
+                'password_.min': t('passwords_min')
             };
         
             let keywords = {
@@ -231,6 +286,11 @@ class User {
     }
 
     async changePassword(req, res) {
+        // {
+        //     "old_password": "mypassword2",
+        //     "new_password":"mypassword3"
+        // }
+        
         try{
             // var request_data = req.body;
             const request_data = JSON.parse(common.decryptPlain(req.body));
@@ -270,23 +330,35 @@ class User {
         // });
     }
 
-
-
     async listNotifications(req, res) {
         try{
             // console.log("fghjk",req.body);
             console.log('aaa');
             
-            
-            const request_data = JSON.parse(common.decryptPlain(req.body));
-            console.log(request_data);
-            // console.log(req.body);
+            let request_data = {};
+    
+            // Decrypt only if req.body is not empty
+            if (req.body && Object.keys(req.body).length > 0) {
+                const decryptedData = common.decryptString(req.body);
+                
+                // Ensure decrypted data is a valid JSON string before parsing
+                if (typeof decryptedData === "string" && decryptedData.trim() !== "") {
+                    request_data = JSON.parse(decryptedData);
+                } else {
+                    return common.response(res, {
+                        code: response_code.OPERATION_FAILED,
+                        message: "Invalid decrypted data format"
+                    });
+                }
+            }
+    
+            console.log("Request Data after decryption:", request_data);
             const rules = validationRules.listNotifications;
 
         const valid = middleware.checkValidationRules(req,res,request_data,rules)
         console.log("Valid",valid);
         if (!valid) return;
-        const responseData = await userModel.listNotifications(request_data);
+        const responseData = await userModel.listNotifications(request_data,req.user_id);
         
         // Send response
         return common.response(res, responseData);
@@ -302,8 +374,6 @@ class User {
     async getItemDetails(req, res) {
         try{
             // console.log("fghjk",req.body);
-            console.log('aaa');
-            
             
             const request_data = JSON.parse(common.decryptPlain(req.body));
 
@@ -469,51 +539,118 @@ class User {
     }
 
     async place_order(req, res) {
-    try{
-        
-// {
+        try {
+            let request_data = common.decryptPlain(req.body);
+            
+            // Ensure request_data is an object
+            if (typeof request_data === 'string') {
+                try {
+                    request_data = JSON.parse(request_data);
+                } catch (e) {
+                    return common.response(res, {
+                        code: response_code.INVALID_REQUEST,
+                        message: "Invalid JSON format"
+                    });
+                }
+            }
+            
+            // Validate meals
+            if (!request_data.meals || !Array.isArray(request_data.meals)) {
+                return common.response(res, {
+                    code: response_code.INVALID_REQUEST,
+                    message: "Meals must be provided as an array"
+                });
+            }
+            
+            // Store original meals as JSON string before validation might modify it
+            const original_meals = JSON.stringify(request_data.meals);
+            
+            // Continue with validation
+            const rules = validationRules.place_order;
+            let message = {
+                required: req.language.required,
+                category: t('category'),
+                item_id: t('item_id'),
+            };
+            
+            let keywords = {
+                category: t('category'),
+                item_id: t('item_id'),
+            };
+            
+            // Create a copy of request_data for validation to avoid modifying the original
+            const validation_data = {...request_data};
+            
+            const valid = middleware.checkValidationRules(req, res, validation_data, rules, message, keywords);
+            console.log("Valid", valid);
+            if (!valid) return;
+            
+            // Ensure meals is still an array after validation
+            if (typeof request_data.meals === 'string') {
+                try {
+                    request_data.meals = JSON.parse(original_meals);
+                } catch (e) {
+                    console.error("Error restoring original meals:", e);
+                }
+            }
+            
+            // Add original meals as a backup
+            request_data.original_meals = original_meals;
+            
+            // Call model function with fixed data
+            const responseData = await userModel.place_order(request_data, req.user_id);
+            
+            return common.response(res, responseData);
+        } catch (error) {
+            console.error("Error in place_order controller:", error);
+            return common.response(res, {
+                code: response_code.OPERATION_FAILED,
+                message: t('rest_keywords_something_went_wrong') + error
+            });
+        }
+    }
+    
+    async displayHomePage(req, res) {
+        try{
+            const request_data = JSON.parse(common.decryptPlain(req.body));
 
-//     "delivery_id": "1",
-//     "note": "Please deliver on time.",
-//     "category": "Lunch",
-//     "meals": [
-//         {
-//             "item_id": 1,
-//             "qty": 2
-//         },
-//         {
-//             "item_id": 2,
-//             "qty": 1
-//         }
-//     ]
-// }
+            console.log(request_data);
+            const rules = validationRules.displayHomePage;
 
+        const valid = middleware.checkValidationRules(req,res,request_data,rules)
+        console.log("Valid",valid);
+        if (!valid) return;
+        const responseData = await userModel.displayHomePage(request_data,req.user_id);
         
+        // Send response
+        return common.response(res, responseData);
+
+        }catch(error){
+            return common.response(res, {
+                code: response_code.OPERATION_FAILED,
+                message: t('rest_keywords_something_went_wrong') + error
+            });
+    }
+    }
+
+    async categoryWiseItems(req, res) {
+        try{
+            let decryptedData = common.decryptString(req.body);
         
-        const request_data = JSON.parse(common.decryptPlain(req.body));
+            // If decryption fails or returns an error, default to an empty object
+            if (typeof decryptedData !== "string" || decryptedData.trim() === "") {
+                decryptedData = "{}"; // Ensures JSON.parse doesn't throw an error
+            }
+    
+            const request_data = JSON.parse(decryptedData);
 
         console.log(request_data);
-        const rules = validationRules.place_order;
+        const rules = validationRules.categoryWiseItems;
 
-        let message = {
-           required: req.language.required,
-            meals: t('meals'),
-            category: t('category'),
-            item_id: t('item_id'),
-            qty: t('qty')
-
-        };
-        
-        let keywords = {
-            meals: t('meals'),
-            category: t('category'),
-            item_id: t('item_id'),
-            qty: t('qty')
-        };
-    const valid = middleware.checkValidationRules(req,res,request_data,rules,message, keywords)
+    const valid = middleware.checkValidationRules(req,res,request_data,rules)
     console.log("Valid",valid);
     if (!valid) return;
-    const responseData = await userModel.place_order(request_data,req.user_id);
+    const responseData = await userModel.categoryWiseItems(request_data,req.user_id);
     
     // Send response
     return common.response(res, responseData);
@@ -525,7 +662,49 @@ class User {
         });
 }
     }
-    
+
+    async subscribe(req, res) {
+        try{
+            try{
+             
+                const request_data = JSON.parse(common.decryptPlain(req.body));
+        
+                console.log(request_data);
+                const rules = validationRules.subscribe;
+        
+                let message = {
+                    required: req.language.required,
+                    user_id: t('user_id'),
+                    duration_in_months: t('duration_in_months'),
+
+                };
+                
+                let keywords = {
+                   user_id: t('user_id'),
+                    duration_in_months: t('duration_in_months'),
+                };
+            const valid = middleware.checkValidationRules(req,res,request_data,rules,message, keywords)
+            console.log("Valid",valid);
+            if (!valid) return;
+            const responseData = await userModel.subscribe(request_data,req.user_id);
+            
+            // Send response
+            return common.response(res, responseData);
+        
+            }catch(error){
+                return common.response(res, {
+                    code: response_code.OPERATION_FAILED,
+                    message: t('rest_keywords_something_went_wrong') + error
+                });
+        }
+        }catch(error){
+            return common.response(res, {
+                code: response_code.OPERATION_FAILED,
+                message: t('rest_keywords_something_went_wrong') + error
+            });
+        }
+    }
+
     async logout(req, res) {
         try{
             const request_data = JSON.parse(common.decryptPlain(req.body));
@@ -548,6 +727,7 @@ class User {
             });
     }
     }
+
     async delete(req, res) {
         try {
             console.log("Request Body:", req.body, "Type:", typeof req.body);
@@ -591,6 +771,7 @@ class User {
             });
         }
     }
-    
+
+
 };
 module.exports = new User();

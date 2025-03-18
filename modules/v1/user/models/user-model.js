@@ -18,16 +18,16 @@ class UserModel {
                     o.delivery_time_start, 
                     o.delivery_time_end, 
                     i.item_name, 
-                    m.quanitity, 
+                    m.qty, 
                     o.note, 
                     o.status_
                 FROM tbl_user u 
                 INNER JOIN tbl_order o ON o.user_id = u.user_id
                 INNER JOIN tbl_meal m ON m.order_id = o.order_id
-                INNER JOIN tbl_item_details i ON i.item_id = m.item_id
+                INNER JOIN tbl_item i ON i.item_id = m.item_id
                 INNER JOIN tbl_delivery_address d ON d.delivery_id = u.delivery_address 
                 WHERE o.order_id = ?
-                GROUP BY o.order_id, o.delivery_time_start, o.delivery_time_end, i.item_name, m.quanitity, o.note, o.status_;`;
+                GROUP BY o.order_id, o.delivery_time_start, o.delivery_time_end, i.item_name, m.qty, o.note, o.status_`;
             const [itemDetails] = await database.query(select_user_query, [request_data.order_id]);
             if(itemDetails.length>0){
                 return {
@@ -49,24 +49,15 @@ class UserModel {
             };
         }
     }
+
     async getItemDetails(request_data){
         try{
-            const select_user_query = `SELECT 
-                itd.item_name,
-                itd.kcal,
-                itd.carbs,
-                itd.protein,
-                itd.fat,
-                itd.desc_,
-                i.image_name,
-                GROUP_CONCAT(ing.name_) AS ingredients
-            FROM tbl_item_details AS itd
-            INNER JOIN tbl_rel_ingredient_item AS rinit ON itd.item_id = rinit.item_id
-            INNER JOIN tbl_ingredients AS ing ON ing.ingredient_id = rinit.ingredient_id
-            INNER JOIN tbl_images AS i ON i.image_id = itd.image_id
-            WHERE itd.item_id = ?
-            GROUP BY itd.item_id, itd.item_name, itd.kcal, itd.carbs, itd.protein, itd.fat, itd.desc_, i.image_name
-        `;
+            const select_user_query = `select  ing.ingredient_name ,i.image_name,itd.item_name,itd.kcal,itd.carbs,itd.protein,itd.fat,itd.about  
+                            from tbl_item as itd
+                            left join  ing_item_rel rinit on itd.item_id = rinit.item_id
+                            left join tbl_ingredients ing on ing.ing_id= rinit.ing_id
+                            left join tbl_images i on i.image_id = itd.image_id
+                            where itd.item_id = ?`;
             const [itemDetails] = await database.query(select_user_query, [request_data.item_id]);
             if(itemDetails.length>0){
                 return {
@@ -151,7 +142,7 @@ class UserModel {
 
     async listNotifications(user_id){
         try{
-            const query = ` `;
+            const query = `SELECT * from tbl_notification where user_id = ? `;
             const [notifications] = await database.query(query, [user_id]);
             console.log(notifications);
             
@@ -182,19 +173,31 @@ class UserModel {
         try{
             const meals = request_data.meals;
             const category = request_data.category;
+            
+            const findSubscUser = `SELECT * from tbl_subsc_user where user_id = ? and expires_at > NOW() AND is_active = 1 AND is_deleted = 0`;
+            const [subscribers] = await database.query(findSubscUser, [user_id]);
 
-            if(!meals||meals.length===0){
-                return {
+            if(subscribers.length === 0){
+                return callback(common.encrypt({
                     code: response_code.OPERATION_FAILED,
-                    message: "No meals provided to place order"
-                };
+                    message: "You are not Subscribed... Please Subscribe !",
+                    data: subscribers
+                }));
             }
 
+            if (!meals || meals.length === 0) {
+                return callback(common.encrypt({
+                    code: response_code.OPERATION_FAILED,
+                    message: "No meals provided to place order"
+                }));
+            }
+    
             const now = new Date();
-            const delivery_time_start = now.toTimeString().split(' ')[0]; 
+            const delivery_time_start = new Date(now.getTime() + 2 * 60 * 60 * 1000);;
     
             const deliveryEndDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); 
-            const delivery_time_end = deliveryEndDate.toTimeString().split(' ')[0]; 
+            const delivery_time_end = deliveryEndDate; 
+    
             const order_data = {
                 user_id: user_id,
                 delivery_id: request_data.delivery_id,
@@ -204,10 +207,12 @@ class UserModel {
                 delivery_time_end: delivery_time_end,
                 total_qty: 0
             };
+    
             const [orderRes] = await database.query(`INSERT INTO tbl_order SET ?`, [order_data]);
             const order_id = orderRes.insertId;
-
+            console.log(meals);
             for (const meal of meals) {
+                console.log(meal);
                 const meal_data = {
                     order_id: order_id,
                     item_id: meal.item_id,
@@ -224,12 +229,12 @@ class UserModel {
                 data: { order_id: order_id }
             };
     
-        }catch (error) {
-            return callback(common.encrypt({
+        } catch (error) {
+            return {
                 code: response_code.OPERATION_FAILED,
                 message: "ERROR PLACING ORDER",
                 data: error.message
-            }));
+            };
         }
     }
 
@@ -304,5 +309,143 @@ class UserModel {
         }
     }
 
+    async displayHomePage(request_data, user_id){
+        try{
+            const query = `SELECT 
+                            SUM(ti.kcal * tm.qty) AS total_kcal, 
+                            SUM(ti.carbs * tm.qty) AS total_carbs_gm,
+                            SUM(ti.protein * tm.qty) AS total_protein,
+                            SUM(ti.fat * tm.qty) AS total_fat_gm
+                        FROM 
+                            tbl_meal tm
+                        JOIN 
+                            tbl_item ti ON tm.item_id = ti.item_id
+                        WHERE 
+                            tm.user_id = ?
+                            AND tm.order_id IN (
+                                SELECT order_id 
+                                FROM tbl_order 
+                                WHERE is_active = 1 
+                                AND is_deleted = 0 
+                                AND status_ IN ('confirmed', 'in_preparation', 'ofd')
+                            );`;
+
+                            const [result] = await database.query(query, [user_id]);
+                            console.log(result);
+                
+                            if(result.length === 0){
+                                return {
+                                    code: response_code.NOT_FOUND,
+                                    message: "NO DATA FOUND, MAKE ORDER"
+                                };
+                            }
+                
+                            return {
+                                code: response_code.SUCCESS,
+                                message: "SUCCESS",
+                                data: result
+                            };
+        }catch(error){
+            return {
+                code: response_code.OPERATION_FAILED,
+                message: "ERROR",
+                data: error.message
+            };
+        }
+    }
+
+    async categoryWiseItems(request_data){
+        try{
+                let query = `SELECT it.category, it.item_name, i.image_name 
+                FROM tbl_item it 
+                JOIN tbl_images i ON it.image_id = i.image_id`;
+
+                let queryParams = [];
+
+                if (request_data.category) {
+                query += ` WHERE it.category = ?`;
+                queryParams.push(request_data.category);
+                }
+                const [result] = await database.query(query, queryParams);
+                console.log(result);
+        
+            
+            if(result.length === 0){
+                return {
+                    code: response_code.NOT_FOUND,
+                    message: "NO DATA FOUND"
+                };
+            }
+
+            return {
+                code: response_code.SUCCESS,
+                message: "SUCCESS",
+                data: result
+            };
+        }catch(error){
+            return {
+                code: response_code.OPERATION_FAILED,
+                message: "ERROR",
+                data: error.message
+            };
+        }
+    }
+
+    async subscribe(request_data,user_id){
+        try{
+            const duration = request_data.duration_in_months;
+            console.log("----------",duration)
+            if (!['3', '6', '9', '12'].includes(duration)) {
+                console.log("--------2-",duration)
+                return {
+                    code: response_code.OPERATION_FAILED,
+                    message: "Invalid subscription duration. Choose 3, 6, 9, or 12 months.",
+                };
+            }
+            console.log(duration)
+            let price = 29.99;
+            if (duration === 6) price = price * 2 ;
+            if (duration === 9) price = price * 3;
+            if (duration === 12) price = price * 4;
+
+             // Check if user already has an active subscription
+             const checkSubQuery = `SELECT * FROM tbl_subsc_user WHERE user_id = ? AND expires_at > NOW() AND is_active = 1`;
+             const [existingSubscription] = await database.query(checkSubQuery, [user_id]);
+     
+             if (existingSubscription.length > 0) {
+                 return {
+                     code: response_code.OPERATION_FAILED,
+                     message: "You already have an active subscription.",
+                     data: existingSubscription
+                 };
+             }
+
+             // Calculate subscription expiry date
+            const now = new Date();
+            const expires_at = new Date(now.setMonth(now.getMonth() + duration));
+
+            const subsc_data = {
+                user_id: user_id,
+                price: price,
+                duration_in_months: duration,
+                expires_at: expires_at,
+                is_active: 1
+            }
+            const insertQuery = `INSERT INTO tbl_subsc_user SET ?`;
+            const [result] = await database.query(insertQuery, [subsc_data]);
+            return{
+                code: response_code.SUCCESS,
+                message: "SUCCESS",
+                data: result
+            }
+           
+        }catch(error){
+            return {
+                code: response_code.OPERATION_FAILED,
+                message: "ERROR",
+                data: error.message
+            };
+        }
+    }
 }
 module.exports = new UserModel();

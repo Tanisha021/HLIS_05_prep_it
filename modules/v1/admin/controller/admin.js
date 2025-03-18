@@ -8,6 +8,7 @@ const {default: localizify} = require('localizify');
 const validationRules  = require('../../../validation_rules');
 const middleware = require("../../../../middleware/validators");
 const { t } = require("localizify");
+const { item_id } = require("../../../../language/en");
 
 class Admin {
         async login_admin(req, res) {
@@ -24,7 +25,7 @@ class Admin {
     
             let message={
                 required: req.language.required,
-                email: t('email'),
+                email_id: t('email'),
                 'password_.min': t('passwords_min')
             }
     
@@ -66,20 +67,6 @@ class Admin {
     
             console.log("Decrypted Request Data:", request_data);
     
-            // Ensure ingredient_ids is an array
-            if (!Array.isArray(request_data.ingredient_ids)) {
-                if (typeof request_data.ingredient_ids === "string") {
-                    request_data.ingredient_ids = request_data.ingredient_ids
-                        .split(",") // Convert comma-separated string to an array
-                        .map(id => Number(id.trim())) // Convert each value to a number
-                        .filter(id => !isNaN(id)); // Remove invalid numbers
-                } else {
-                    request_data.ingredient_ids = []; // Default to empty array if invalid
-                }
-            }
-    
-            console.log("Processed ingredient_ids:", request_data.ingredient_ids);
-    
             const rules = validationRules.add_item_by_admin;
     
             let message = {
@@ -91,7 +78,7 @@ class Admin {
                 fat: t('fat'),
                 desc_: t('desc_'),
                 image_id: t('image_id'),
-                ingredient_ids: t('ingredient_ids')
+                ingredient_id: t('ingredient_ids')
             };
     
             let keywords = { ...message };
@@ -112,6 +99,101 @@ class Admin {
             });
         }
     }
+    async delete_item(req, res) {
+        try {
+
+            const request_data = JSON.parse(common.decryptPlain(req.body));
+                        // console.log(req.body);
+                        const rules = validationRules.getItemDetails;
+            
+                        let message={
+                            required: req.language.required,
+                            item_id: t('item_id'),      
+                        }
+            
+                        let keywords={
+                            item_id: t('item_id')
+                        }
     
+            const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
+            console.log("Valid:", valid);
+            if (!valid) return;
+    
+            const responseData = await adminModel.delete_item(request_data, req.admin_id);
+    
+            return common.response(res, responseData);
+    
+        } catch (error) {
+            console.log("Error in add_item_by_admin", error);
+            return common.response(res, {
+                code: response_code.OPERATION_FAILED,
+                message: t('rest_keywords_something_went_wrong') + error
+            });
+        }
+    }
+    async analytics_dashboard(req, res) {
+        try {
+
+            console.log("Request Body:", req.body, "Type:", typeof req.body);
+                
+                        let request_data = {};
+                
+                        // Decrypt only if req.body is not empty
+                        if (req.body && Object.keys(req.body).length > 0) {
+                            const decryptedData = common.decryptString(req.body);
+                            
+                            // Ensure decrypted data is a valid JSON string before parsing
+                            if (typeof decryptedData === "string" && decryptedData.trim() !== "") {
+                                request_data = JSON.parse(decryptedData);
+                            } else {
+                                return common.response(res, {
+                                    code: response_code.OPERATION_FAILED,
+                                    message: "Invalid decrypted data format"
+                                });
+                            }
+                        }
+                
+                        console.log("Request Data after decryption:", request_data);
+                        const rules = validationRules.delete;
+            const valid = middleware.checkValidationRules(req, res, request_data, rules);
+            console.log("Valid:", valid);
+            if (!valid) return;
+    
+            const responseData = await adminModel.analytics_dashboard(request_data, req.admin_id);
+    
+            return common.response(res, responseData);
+    
+        } catch (error) {
+            console.log("Error in add_item_by_admin", error);
+            return common.response(res, {
+                code: response_code.OPERATION_FAILED,
+                message: t('rest_keywords_something_went_wrong') + error
+            });
+        }
+    }
+
+    async logout_admin(req, res) {
+        try{
+            const request_data = JSON.parse(common.decryptPlain(req.body));
+
+            console.log(request_data);
+            const rules = validationRules.logout_admin;
+
+        const valid = middleware.checkValidationRules(req,res,request_data,rules)
+        console.log("Valid",valid);
+        if (!valid) return;
+        console.log("Request Data:", req);
+        const responseData = await adminModel.logout_admin(request_data,req.user_id);
+        
+        // Send response
+        return common.response(res, responseData);
+
+        }catch(error){
+            return common.response(res, {
+                code: response_code.OPERATION_FAILED,
+                message: t('rest_keywords_something_went_wrong') + error
+            });
+    }
+    }
 };
 module.exports = new Admin();

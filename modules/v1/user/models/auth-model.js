@@ -23,18 +23,6 @@ class UserModel {
             if (existingUser.length > 0) {
                 const user = existingUser[0];
     
-                // Reactivate the user if deleted and inactive
-                if (user.is_deleted == 1 && user.is_active == 0) {
-                    const updateUserQuery = "UPDATE tbl_user SET is_deleted = 0, is_active = 1 WHERE user_id = ?";
-                    await database.query(updateUserQuery, [user.user_id]);
-    
-                    await common.updateOtp(user.user_id);
-                    return callback({
-                        code: response_code.SUCCESS,
-                        message: "Account reactivated. OTP sent for verification."
-                    });
-                }
-    
                 // Check if the user is already verified
                 const verifyQuery = "SELECT * FROM tbl_otp WHERE user_id = ? AND verify = 1";
                 const [verifiedUser] = await database.query(verifyQuery, [user.user_id]);
@@ -126,8 +114,20 @@ class UserModel {
     // OTP validation
     async validateOTP(request_data, callback) {
         try {
+           // Get user_id from tbl_user using phone_number
+        const getUserQuery = "SELECT user_id FROM tbl_user WHERE phone_number = ?";
+        const [userResult] = await database.query(getUserQuery, [request_data.phone_number]);
+
+        if (!userResult || userResult.length === 0) {
+            return callback({
+                code: response_code.OPERATION_FAILED,
+                message: "User not found"
+            });
+        }
+
+            const user_id = userResult[0].user_id; 
             const getOtpQuery = "SELECT otp FROM tbl_otp WHERE user_id = ?";
-            const [otpResult] = await database.query(getOtpQuery, [request_data.user_id]);
+            const [otpResult] = await database.query(getOtpQuery, [user_id]);
             console.log("OTP Result:", otpResult);
 
             if (!otpResult || otpResult.length === 0) {
@@ -147,7 +147,7 @@ class UserModel {
             // mark OTP as verified
             const updateOtpQuery = "UPDATE tbl_otp SET verify = 1 WHERE user_id = ? and otp = ?";
             console.log("Executing Query:", updateOtpQuery);
-            const [updateResult] = await database.query(updateOtpQuery, [request_data.user_id, request_data.otp]);
+            const [updateResult] = await database.query(updateOtpQuery, [user_id, request_data.otp]);
             console.log("Update Query Result:", updateResult);
 
             // Generate tokens here - BEFORE you use them
@@ -156,8 +156,8 @@ class UserModel {
 
            // Update user and device tables with the generated tokens
                 await Promise.all([
-                    database.query("UPDATE tbl_user SET isstep_ = '2', token = ? WHERE user_id = ?", [userToken, request_data.user_id]),
-                    database.query("UPDATE tbl_device_info SET device_token = ? WHERE user_id = ?", [deviceToken, request_data.user_id])
+                    database.query("UPDATE tbl_user SET isstep_ = '2', token = ? WHERE user_id = ?", [userToken, user_id]),
+                    database.query("UPDATE tbl_device_info SET device_token = ? WHERE user_id = ?", [deviceToken, user_id])
                 ]);
                 
                 // Return success with tokens
@@ -401,23 +401,23 @@ class UserModel {
     //forget password
     async forgotPassword(request_data, callback) {
         try {
-            let field, email;
+            // let field, email;
 
             // Determine whether to use email or phone number
-            if (request_data.email_id) {
-                field = 'email_id';
-                email = request_data.email_id;
-            } else if (request_data.phone_number) {
-                field = 'phone_number';
-                email = request_data.phone_number;
-            } else {
-                return callback({
-                    code: response_code.OPERATION_FAILED,
-                    message: "Email or phone number is required"
-                });
-            }
+            // if (request_data.email_id) {
+            //     field = 'email_id';
+            //     email = request_data.email_id;
+            // } else if (request_data.phone_number) {
+            //     field = 'phone_number';
+            //     email = request_data.phone_number;
+            // } else {
+            //     return callback({
+            //         code: response_code.OPERATION_FAILED,
+            //         message: "Email or phone number is required"
+            //     });
+            // }
 
-            const selectQuery = `SELECT user_id, email_id, phone_number FROM tbl_user WHERE ${field} = ?`;
+            const selectQuery = `SELECT user_id, email_id, phone_number FROM tbl_user WHERE email = '${request_data.emailOrPhone}' OR phone_number = '${request_data.emailOrPhone}'`;
             // console.log("Executing Query:", selectQuery);
             // Execute the query
             const [result] = await database.query(selectQuery, [email]);
@@ -456,9 +456,20 @@ class UserModel {
                     message: t("rest_keywords_password") + t("required")
                 };
             }                                         
+            const getUserQuery = "SELECT user_id FROM tbl_user WHERE email_id = ?";
+            const [userResult] = await database.query(getUserQuery, [request_data.email_id]);
+    
+            if (!userResult || userResult.length === 0) {
+                return callback({
+                    code: response_code.OPERATION_FAILED,
+                    message: "User not found"
+                });
+            }
+    
+            const user_id = userResult[0].user_id; 
             const passwordHash = md5(request_data.password_ || ""); // Hash the password
             const updateQuery = "UPDATE tbl_user SET password_ = ? WHERE user_id = ?";
-            const [result] = await database.query(updateQuery, [passwordHash, request_data.user_id]);
+            const [result] = await database.query(updateQuery,[ passwordHash,user_id]);
             console.log("Update Query Result:", result);
 
             if (result.affectedRows === 0) {
@@ -499,10 +510,11 @@ class UserModel {
         try {
             let oldPassword = request_data.old_password; // Old password from user input
             let newPassword = request_data.new_password; // New password from user input
-
+            let confirmPassword = request_data.confirm_password; // Confirm password from user input
             // Hash the passwords
             const oldPasswordHash = md5(oldPassword || "");
             const newPasswordHash = md5(newPassword || "");
+            const confirmPasswordHash = md5(confirmPassword || "");
 
             const selectQuery = `SELECT password_ FROM tbl_user WHERE user_id = ${user_id}`;
             const [result] = await database.query(selectQuery);
@@ -517,6 +529,12 @@ class UserModel {
                 return {
                     code: response_code.OPERATION_FAILED,
                     message: "Old password and new password should not be same"
+                };
+            }
+            if (newPasswordHash !== confirmPasswordHash) {
+                return {
+                    code: response_code.OPERATION_FAILED,
+                    message: "New password and confirm password should be same"
                 };
             }
             const updateQuery = `UPDATE tbl_user SET password_ = ? WHERE user_id = ${user_id}`;
@@ -546,7 +564,6 @@ class UserModel {
     // login
     async login(request_data) {
         try {
-            
             if (!request_data.email_id || !request_data.password_) {
                 return {
                     code: response_code.BAD_REQUEST,
@@ -556,10 +573,10 @@ class UserModel {
             
             const passwordHash = md5(request_data.password_);
     
-                // Query the user from the database
+            // Query the user from the database
             const selectUserWithCred = "SELECT * FROM tbl_user WHERE email_id = ? AND password_ = ?";
             const [status] = await database.query(selectUserWithCred, [request_data.email_id, passwordHash]);
-
+    
             // If no user found
             if (status.length === 0) {
                 console.log("No user found");
@@ -568,9 +585,101 @@ class UserModel {
                     message: t('no_data_found')
                 };
             }
-
-            const user_id = status[0].user_id;
     
+            const user_id = status[0].user_id;
+            const currentStep = parseInt(status[0].isstep_);
+            
+            // Check if profile needs completion (step < 5)
+            if (currentStep < 5) {
+                // Determine which step is missing based on the current step
+                let stepMessage;
+                
+                switch (currentStep) {
+                    case 1:
+                        stepMessage = "Please complete the OTP verification step";
+                        break;
+                    case 2:
+                        stepMessage = "Please complete the location information step";
+                        break;
+                    case 3:
+                        stepMessage = "Please complete the fitness goal step";
+                        break;
+                    case 4:
+                        stepMessage = "Please complete the physical details step";
+                        break;
+                    default:
+                        stepMessage = "Please complete your profile setup";
+                }
+                
+                console.log(`User ${user_id} profile incomplete. Current step: ${currentStep}. Message: ${stepMessage}`);
+                
+                // Complete the profile automatically
+                const updatedData = {
+                    isstep_: '5',
+                    is_profile_completed: 1
+                };
+                
+                // If step 2 is not complete, add location data (using default values if needed)
+                if (currentStep < 3) {
+                    updatedData.latitude = request_data.latitude || "0.0";
+                    updatedData.longitude = request_data.longitude || "0.0";
+                }
+                
+                // If step 3 is not complete, add goal data
+                if (currentStep < 4) {
+                    updatedData.goal_id = request_data.goal_id || 1; // Default goal ID
+                }
+                
+                // If step 4 is not complete, add profile details
+                if (currentStep < 5) {
+                    updatedData.gender = request_data.gender || "not_specified";
+                    updatedData.current_weight_kg = request_data.current_weight_kg || 70;
+                    updatedData.target_weight_kg = request_data.target_weight_kg || 65;
+                    updatedData.current_height_cm = request_data.current_height_cm || 170;
+                    updatedData.activity_level = request_data.activity_level || "moderate";
+                }
+                
+                // Update user profile directly using a database query to ensure it works
+                try {
+                    console.log("Updating user profile with data:", updatedData);
+                    const updateQuery = "UPDATE tbl_user SET isstep_ = ?, is_profile_completed = ?, gender = ?, current_weight_kg = ?, target_weight_kg = ?, current_height_cm = ?, activity_level = ? WHERE user_id = ?";
+                    
+                    await database.query(updateQuery, [
+                        updatedData.isstep_,
+                        updatedData.is_profile_completed,
+                        updatedData.gender || status[0].gender || "not_specified",
+                        updatedData.current_weight_kg || status[0].current_weight_kg || 70,
+                        updatedData.target_weight_kg || status[0].target_weight_kg || 65,
+                        updatedData.current_height_cm || status[0].current_height_cm || 170,
+                        updatedData.activity_level || status[0].activity_level || "moderate",
+                        user_id
+                    ]);
+                    
+                    console.log("Profile auto-completed during login");
+                    
+                    // Verify the update worked by querying again
+                    const verifyQuery = "SELECT isstep_, is_profile_completed FROM tbl_user WHERE user_id = ?";
+                    const [verifyResult] = await database.query(verifyQuery, [user_id]);
+                    
+                    console.log("Verification after update:", verifyResult[0]);
+                    
+                    if (parseInt(verifyResult[0].isstep_) < 5) {
+                        console.log("Warning: Profile update did not complete as expected");
+                        return {
+                            code: response_code.OPERATION_FAILED,
+                            message: stepMessage
+                        };
+                    }
+                } catch (updateError) {
+                    console.error("Error auto-completing profile:", updateError);
+                    return {
+                        code: response_code.OPERATION_FAILED,
+                        message: `Failed to complete profile. ${stepMessage}`
+                    };
+                }
+            }
+    
+            // Generate and update tokens
             const token = common.generateToken(40);
             const updateTokenQuery = "UPDATE tbl_user SET token = ?, is_login = 1 WHERE user_id = ?";
             await database.query(updateTokenQuery, [token, user_id]);
@@ -579,16 +688,13 @@ class UserModel {
             const updateDeviceToken = "UPDATE tbl_device_info SET device_token = ? WHERE user_id = ?";
             await database.query(updateDeviceToken, [device_token, user_id]);
     
-            // Using await with a Promise wrapper instead of callback pattern for getUserDetailLogin
-            const userInfo = await new Promise((resolve, reject) => {
-                common.getUserDetailLogin(user_id, request_data.login_type, (err, userResult) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(userResult);
-                    }
-                });
-            });
+            const userInfo = await common.getUserDetailLogin(user_id);
+            if (!userInfo) {
+                return {
+                    code: response_code.NOT_FOUND,
+                    message: t('no_data_found')
+                };
+            }
             
             userInfo.token = token;
             userInfo.device_token = device_token;
@@ -606,6 +712,67 @@ class UserModel {
             };
         }
     }
+    
+    // async login(request_data) {
+    //     try {
+            
+    //         if (!request_data.email_id || !request_data.password_) {
+    //             return {
+    //                 code: response_code.BAD_REQUEST,
+    //                 message: "Email and password are required"
+    //             };
+    //         }
+            
+    //         const passwordHash = md5(request_data.password_);
+    
+    //             // Query the user from the database
+    //         const selectUserWithCred = "SELECT * FROM tbl_user WHERE email_id = ? AND password_ = ?";
+    //         const [status] = await database.query(selectUserWithCred, [request_data.email_id, passwordHash]);
+
+    //         // If no user found
+    //         if (status.length === 0) {
+    //             console.log("No user found");
+    //             return {
+    //                 code: response_code.NOT_FOUND,
+    //                 message: t('no_data_found')
+    //             };
+    //         }
+
+    //         const user_id = status[0].user_id;
+    
+    //         const token = common.generateToken(40);
+    //         const updateTokenQuery = "UPDATE tbl_user SET token = ?, is_login = 1 WHERE user_id = ?";
+    //         await database.query(updateTokenQuery, [token, user_id]);
+    
+    //         const device_token = common.generateToken(40);
+    //         const updateDeviceToken = "UPDATE tbl_device_info SET device_token = ? WHERE user_id = ?";
+    //         await database.query(updateDeviceToken, [device_token, user_id]);
+    
+
+    //         const userInfo = await common.getUserDetailLogin(user_id);
+    //             if (!userInfo) {
+    //                 return {
+    //                     code: response_code.NOT_FOUND,
+    //                     message: t('no_data_found')
+    //                 };
+    //             }
+            
+    //         userInfo.token = token;
+    //         userInfo.device_token = device_token;
+            
+    //         return {
+    //             code: response_code.SUCCESS,
+    //             message: t('login_success'),
+    //             data: userInfo
+    //         };
+    //     } catch (error) {
+    //         console.error("Login error:", error);
+    //         return {
+    //             code: response_code.OPERATION_FAILED,
+    //             message: error.sqlMessage || error.message
+    //         };
+    //     }
+    // }
 
 
 }
