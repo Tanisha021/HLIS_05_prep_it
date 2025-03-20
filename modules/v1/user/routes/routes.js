@@ -13,15 +13,7 @@ const customerRoute = (app) => {
      app.post("/v1/user/reset-password", User.resetPassword);
      app.post("/v1/user/change-password", User.changePassword);
 
-     app.post("/v1/user/item-details", User.getItemDetails);
-     app.post("/v1/user/order-details", User.getOrderDetails);
-     app.post("/v1/user/list_notifications", User.listNotifications);
-     app.post("/v1/user/add-delivery-details", User.addDeliveryAddress);
-     app.post("/v1/user/help-support", User.help_support);
-     app.post("/v1/user/place-order", User.place_order);
-     app.post("/v1/user/display-home-page", User.displayHomePage);
-     app.post("/v1/user/categoryWiseItems", User.categoryWiseItems);
-     app.post("/v1/user/subscribe", User.subscribe);
+    
      app.post("/v1/user/logout", User.logout);
      app.post("/v1/user/delete", User.delete);
 
