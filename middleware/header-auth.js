@@ -81,7 +81,7 @@ class headerAuth{
     async getRequestOwner(token){
         try{
             console.log("Getting user from token:", token);
-            const selectQuery = `SELECT * FROM tbl_user WHERE token = ?`;
+            const selectQuery = `SELECT * FROM tbl_device_info WHERE user_token = ?`;
             const [owner] = await database.query(selectQuery, [token]);
             console.log(owner);
             if(owner.length > 0){
@@ -97,6 +97,21 @@ class headerAuth{
         try{
             console.log("Getting user from token:", token);
             const selectQuery = `SELECT * FROM admin_ WHERE token = ?`;
+            const [owner] = await database.query(selectQuery, [token]);
+            console.log(owner);
+            if(owner.length > 0){
+                return owner[0];
+            }else{
+                throw new Error("Invalid access token");
+            }
+        }catch (error) {
+            throw error;
+        }
+    }
+    async getRequestDriver(token){
+        try{
+            console.log("Getting user from token:", token);
+            const selectQuery = `SELECT * FROM tbl_device_info_driver WHERE driver_token = ?`;
             const [owner] = await database.query(selectQuery, [token]);
             console.log(owner);
             if(owner.length > 0){
@@ -124,7 +139,7 @@ class headerAuth{
                     .add('hn', hn);
 
             const byPassApi=['forgot-password', 'resendOTP', 'login', 'signup','login_admin',
-                             'resend-otp','verify-otp', 'reset-password','check-verification'];
+                            ,'validate-forgot-password','verify-otp', 'reset-password','check-verification'];
 
                              let headerObj = new headerAuth();
                              req = headerObj.extractMethod(req);
@@ -150,7 +165,12 @@ class headerAuth{
                             user = await headerObj.getRequestAdmin(token);
                             console.log("Admin found:", user);
                             req.user_id = user.admin_id; // Assign admin_id if admin
-                        } else {
+                        } else if(req.requestedModule === 'driver'){
+                            user = await headerObj.getRequestDriver(token);
+                            console.log("Driver found:", user);
+                            req.user_id = user.driver_id; // Assign driver_id if driver
+                        }
+                        else {
                             user = await headerObj.getRequestOwner(token);
                             console.log("User found:", user);
                             req.user_id = user.user_id;

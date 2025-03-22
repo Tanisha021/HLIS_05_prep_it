@@ -10,7 +10,7 @@ class UserModel {
     
     async signup(request_data) {
         try {
-            const { email_id, signup_type, device_type, os_version, app_version, time_zone, full_name, code_id, phone_number, password_, social_id } = request_data;
+            const { email_id, signup_type, device_type, os_version, app_version, time_zone, full_name, code_id, phone_number, password_, social_id,company_name} = request_data;
 
             const device_data = {
                 device_type,
@@ -23,11 +23,11 @@ class UserModel {
 
             // Check if user already exists
             const existingUser = signup_type === 'S'
-                ? await common.findExistingUser(database, email_id, phone_number)
-                : await common.findExistingUser(database, email_id);
+                ? await common.findExistingDriver(database, email_id, phone_number)
+                : await common.findExistingDriver(database, email_id);
 
             if (existingUser.length > 0) {
-                return await common.handleExistingUserOTP(database, existingUser[0]);
+                return await common.handleExistingDriverOTP(database, existingUser[0]);
             }
 
             if (signup_type === 'S') {
@@ -37,6 +37,7 @@ class UserModel {
                     code_id,
                     phone_number,
                     password_: md5(password_),
+                    company_name: company_name,
                     signup_type,
                     login_type: signup_type
                 };
@@ -47,25 +48,25 @@ class UserModel {
                     signup_type
                 };
             }
-            const insertIntoUser = `INSERT INTO tbl_user SET ?`;
+            const insertIntoUser = `INSERT INTO tbl_driver SET ?`;
             const [insertResult] = await database.query(insertIntoUser, [userData]);
 
             device_data.device_token = common.generateToken(40);
             console.log("Device Data:", device_data); 
+                        
+            device_data.driver_id_id = insertResult.insertId;
             
-            device_data.user_id = insertResult.insertId;
-
-            const insertDeviceData = `INSERT INTO tbl_device_info SET ?`;
+            const insertDeviceData = `INSERT INTO tbl_device_info_driver SET ?`;
             await database.query(insertDeviceData, device_data);
-
+            
             const otp_ = common.generateOTP();
             console.log("Generated OTP:", otp_);
 
-            const updateOtpQuery = `UPDATE tbl_user SET otp = ?, is_profile_completed = 0 WHERE user_id = ?`;
+            const updateOtpQuery = `UPDATE tbl_driver SET otp = ?, is_profile_completed = 0 WHERE driver_id = ?`;
             await database.query(updateOtpQuery, [otp_, insertResult.insertId]);
 
             // Fetch user details
-            const userFind = `SELECT full_name FROM tbl_user WHERE user_id = ? AND is_active = 1 AND is_deleted = 0`;
+            const userFind = `SELECT full_name FROM tbl_driver WHERE driver_id = ? AND is_active = 1 AND is_deleted = 0`;
             const [user] = await database.query(userFind, [insertResult.insertId]);
 
             return {
@@ -87,8 +88,8 @@ class UserModel {
         try {
                        const { phone_number, otp } = request_data;
                        const selectUserQuery = `
-                           SELECT user_id, otp, is_profile_completed 
-                           FROM tbl_user 
+                           SELECT driver_id, otp, is_profile_completed 
+                           FROM tbl_driver 
                            WHERE phone_number = ? AND is_active = 1 AND is_deleted = 0
                        `;
                        const [userResult] = await database.query(selectUserQuery, [phone_number]);
@@ -101,7 +102,7 @@ class UserModel {
                        }
                
                        const user = userResult[0];
-                       const user_id = user.user_id;
+                       const driver_id = user.driver_id;
                
                        if (!user.otp) {
                            return {
@@ -113,29 +114,32 @@ class UserModel {
                           console.log("Request OTP:", otp == user.otp);
                        if (otp == user.otp) {
                            const updateUserQuery = `
-                               UPDATE tbl_user 
+                               UPDATE tbl_driver
                                SET otp = NULL, 
                                    is_profile_completed = 1 
-                               WHERE user_id = ?
+                               WHERE driver_id = ?
                            `;
-                           await database.query(updateUserQuery, [user_id]);
+                           await database.query(updateUserQuery, [driver_id]);
 
                         const userToken = common.generateToken(40);
                         const deviceToken = common.generateToken(40);
+                        console.log("User Token:", userToken);
+                        console.log("Device Token:", deviceToken);
+                        console.log("Driver ID:", driver_id);
                 
                         await database.query(
-                            "UPDATE tbl_device_info SET device_token = ?, user_token = ? WHERE user_id = ?", 
-                            [deviceToken, userToken, user_id]
+                            "UPDATE tbl_device_info_driver SET device_token = ?, driver_token = ? WHERE driver_id = ?", 
+                            [deviceToken, userToken, driver_id]
                         );
 
-                         return callback({
+                         return {
                             code: response_code.SUCCESS,
                             message: "OTP verified successfully",
                             data: {
                                  token: userToken,
                                  device_token: deviceToken
                             }
-                        });
+                        };
                        } else {
                            return {
                                code: response_code.OPERATION_FAILED,
@@ -249,9 +253,8 @@ class UserModel {
                     message: "Please provide either email or phone number"
                 };
             }
-    
-            // Fetch user based on provided input
-            const selectQuery = `SELECT user_id, email_id, phone_number FROM tbl_user WHERE email_id = ? OR phone_number = ?`;
+
+            const selectQuery = `SELECT driver_id, email_id, phone_number FROM tbl_driver WHERE email_id = ? OR phone_number = ?`;
             const [result] = await database.query(selectQuery, [emailOrPhone, emailOrPhone]);
     
             if (result.length === 0) {
@@ -262,18 +265,15 @@ class UserModel {
             }
     
             const user = result[0];
-    
-            // Generate OTP
+
             const otp = common.generateOTP();
             console.log("Generated OTP:", otp);
-    
-            // Determine whether email or phone should be used
+
             const identifierField = user.email_id === emailOrPhone ? "email_id" : "phone_number";
             const identifierValue = user.email_id === emailOrPhone ? user.email_id : user.phone_number;
-    
-            // Store OTP in `tbl_forgot_passwords`
+
             const insertOtpQuery = `
-                INSERT INTO tbl_forgot_passwords (${identifierField}, otp, created_at, expires_at) 
+                INSERT INTO tbl_forgot_password_driver (${identifierField}, otp, created_at, expires_at) 
                 VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 10 MINUTE)) 
                 ON DUPLICATE KEY UPDATE 
                 otp = VALUES(otp), created_at = NOW(), expires_at = DATE_ADD(NOW(), INTERVAL 10 MINUTE)`;
@@ -283,7 +283,7 @@ class UserModel {
             return {
                 code: response_code.SUCCESS,
                 message: "OTP sent successfully. Please verify.",
-                user_id: user.user_id
+                user_id: user.driver_id
             };
     
         } catch (error) {
@@ -301,7 +301,7 @@ class UserModel {
     
             // Step 1: Fetch OTP from forgot password table
             const selectOtpQuery = `
-                SELECT otp FROM tbl_forgot_passwords 
+                SELECT otp FROM tbl_forgot_password_driver
                 WHERE (email_id = ? OR phone_number = ?) 
                 AND expires_at > NOW() 
                 AND is_deleted = 0
@@ -328,7 +328,7 @@ class UserModel {
     
             // Step 2: Fetch user_id from tbl_user using email_id or phone_number
             const selectUserQuery = `
-                SELECT user_id FROM tbl_user 
+                SELECT driver_id FROM tbl_driver 
                 WHERE (email_id = ? OR phone_number = ?) 
                 AND is_active = 1 AND is_deleted = 0
             `;
@@ -341,11 +341,11 @@ class UserModel {
                 };
             }
     
-            const user_id = userResult[0].user_id;
+            const driver_id = userResult[0].driver_id;
     
             // Step 3: Mark OTP as verified
             const updateOtpStatus = `
-                UPDATE tbl_forgot_passwords 
+                UPDATE tbl_forgot_password_driver 
                 SET is_verified = 1
                 WHERE (email_id = ? OR phone_number = ?)
             `;
@@ -355,11 +355,27 @@ class UserModel {
             const userToken = common.generateToken(40);
             const deviceToken = common.generateToken(40);
     
-            // Step 5: Update tbl_device_info with new tokens
-            await database.query(
-                "UPDATE tbl_device_info SET device_token = ?, user_token = ? WHERE user_id = ?", 
-                [deviceToken, userToken, user_id]
-            );
+            const checkDeviceQuery = `
+                SELECT 1 FROM tbl_device_info_driver WHERE driver_id = ?
+            `;
+            const [deviceExists] = await database.query(checkDeviceQuery, [driver_id]);
+
+            if (deviceExists.length === 0) {
+                // Insert new device info
+                const insertDeviceQuery = `
+                    INSERT INTO tbl_device_info_driver (driver_id, device_token, driver_token) 
+                    VALUES (?, ?, ?)
+                `;
+                await database.query(insertDeviceQuery, [driver_id, deviceToken, userToken]);
+            } else {
+                // Update existing device info
+                const updateDeviceQuery = `
+                    UPDATE tbl_device_info_driver 
+                    SET device_token = ?, driver_token = ? 
+                    WHERE driver_id = ?
+                `;
+                await database.query(updateDeviceQuery, [deviceToken, userToken, driver_id]);
+            }
     
             return {
                 code: response_code.SUCCESS,
@@ -379,7 +395,6 @@ class UserModel {
         }
     }
     
-    
     async resetPassword(request_data) {
         try {
             const { email_id, phone_number, password_ } = request_data;
@@ -392,7 +407,7 @@ class UserModel {
             }
 
             const checkVerificationQuery = `
-                SELECT is_verified FROM tbl_forgot_passwords 
+                SELECT is_verified FROM tbl_forgot_password_driver
                 WHERE (email_id = ? OR phone_number = ?) 
                 AND is_deleted = 0
             `;
@@ -404,7 +419,7 @@ class UserModel {
                     message: "OTP verification required before resetting password"
                 };
             }
-            const getUserQuery = "SELECT user_id FROM tbl_user WHERE email_id = ? OR phone_number = ?";
+            const getUserQuery = "SELECT driver_id FROM tbl_driver WHERE email_id = ? OR phone_number = ?";
             const [userResult] = await database.query(getUserQuery, [email_id, phone_number]);
     
             if (!userResult || userResult.length === 0) {
@@ -414,11 +429,11 @@ class UserModel {
                 };
             }
     
-            const user_id = userResult[0].user_id;
+            const driver_id = userResult[0].driver_id;
             const passwordHash = md5(password_);
 
-            const updateQuery = "UPDATE tbl_user SET password_ = ? WHERE user_id = ?";
-            const [result] = await database.query(updateQuery, [passwordHash, user_id]);
+            const updateQuery = "UPDATE tbl_driver SET password_ = ? WHERE driver_id = ?";
+            const [result] = await database.query(updateQuery, [passwordHash, driver_id]);
     
             if (result.affectedRows === 0) {
                 return {
@@ -428,7 +443,7 @@ class UserModel {
             }
     
             const softDeleteOtpQuery = `
-                UPDATE tbl_forgot_passwords 
+                UPDATE tbl_forgot_password_driver
                 SET is_deleted = 1 
                 WHERE (email_id = ? OR phone_number = ?)
             `;
@@ -448,8 +463,8 @@ class UserModel {
         }
     }
     
-    async changePassword(request_data,user_id) {
-        console.log("USER ID:", user_id);
+    async changePassword(request_data,driver_id) {
+        console.log("USER ID:", driver_id);
         try {
             let oldPassword = request_data.old_password; // Old password from user input
             let newPassword = request_data.new_password; // New password from user input
@@ -459,8 +474,8 @@ class UserModel {
             const newPasswordHash = md5(newPassword || "");
             const confirmPasswordHash = md5(confirmPassword || "");
 
-            const selectQuery = `SELECT password_ FROM tbl_user WHERE user_id = ?`;
-            const [result] = await database.query(selectQuery,[user_id]);
+            const selectQuery = `SELECT password_ FROM tbl_driver WHERE driver_id = ?`;
+            const [result] = await database.query(selectQuery,[driver_id]);
 
             if (result[0].password_ !== oldPasswordHash) {
                 return {    
@@ -480,7 +495,7 @@ class UserModel {
                     message: "New password and confirm password should be same"
                 };
             }
-            const updateQuery = `UPDATE tbl_user SET password_ = ? WHERE user_id = ${user_id}`;
+            const updateQuery = `UPDATE tbl_driver SET password_ = ? WHERE driver_id = ${driver_id}`;
             const [updateResult] = await database.query(updateQuery, [newPasswordHash]);
             // Check if the update was successful
             if (updateResult.affectedRows === 0) {
@@ -527,10 +542,10 @@ class UserModel {
                     };
                 }
                 const passwordHash = md5(request_data.password_);
-                selectUserWithCred = "SELECT * FROM tbl_user WHERE email_id = ? AND password_ = ? AND signup_type = ?";
+                selectUserWithCred = "SELECT * FROM tbl_driver WHERE email_id = ? AND password_ = ? AND signup_type = ?";
                 params = [request_data.email_id, passwordHash, "S"];
             } else if (["G", "F", "A"].includes(request_data.login_type)) {
-                selectUserWithCred = "SELECT * FROM tbl_user WHERE social_id = ? AND email_id = ? AND signup_type = ?";
+                selectUserWithCred = "SELECT * FROM tbl_driver WHERE social_id = ? AND email_id = ? AND signup_type = ?";
                 params = [request_data.social_id, request_data.email_id, request_data.login_type.toLowerCase()];
             } else {
                 return {
@@ -549,14 +564,14 @@ class UserModel {
                 };
             }
     
-            const user_id = status[0].user_id;
+            const driver_id = status[0].driver_id;
     
             const userToken = common.generateToken(40);
             const deviceToken = common.generateToken(40);
 
-            await database.query("UPDATE tbl_device_info SET device_token = ?, user_token = ? WHERE user_id = ?", [deviceToken, userToken, user_id]);
+            await database.query("UPDATE tbl_device_info_driver SET device_token = ?, driver_token = ? WHERE driver_id = ?", [deviceToken, userToken, driver_id]);
 
-            const userInfo = await common.getUserDetailLogin(user_id);
+            const userInfo = await common.getDriverDetailLogin(driver_id);
             if (!userInfo) {
                 return {
                     code: response_code.NOT_FOUND,

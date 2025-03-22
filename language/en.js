@@ -31,11 +31,6 @@ var message = {
         "item_id":"item_id is required",
         "latitude": "Latitude is required",
         "longitude": "Longitude is required",
-        "area_name": "Area Name is required",
-        "flat_number": "Flat Number is required",
-        "block_number": "Block Number is required",
-        "road_name": "Road Name is required",
-        "delivery_info": "Delivery Info is required",
         "type_": "Type is required",
         "user_id": "User ID is required",
         "full_name": "Full Name is required",
@@ -43,7 +38,16 @@ var message = {
         "email_id": "Email ID is required",
         "descp": "Description is required",
         "code_id": "Code ID is required",
-        "user_name": "User Name is required"
+        "user_name": "User Name is required",
+       "invalid_otp" : "Invalid OTP",
+       "missing_mandatory_fields" : "Missing mandatory fields",
+       "order_created_successfully" : "Order created successfully",
+       "order_not_found" : "Order not found",
+       "order_already_cancelled" : "Order already cancelled",
+       "order_cannot_be_cancelled": "Order cannot be cancelled",
+       "order_cancelled_successfully" : "Order cancelled successfully",
+       "orders_fetched_successfully" : "Orders fetched successfully",
+
 
 
 }

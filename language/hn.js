@@ -26,7 +26,8 @@ var message = {
     "rest_keywords_post_type": "पोस्ट प्रकार",
     "rest_keywords_category_id": "श्रेणी आईडी",
     "rest_keywords_user_id": "यूजर आईडी",
-    "rest_keywords_media_names": "मीडिया नाम"
+    "rest_keywords_media_names": "मीडिया नाम",
+    "invalid_otp": "अमान्य ओटीपी"
 };
 
 module.exports = message;

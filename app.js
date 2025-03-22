@@ -19,7 +19,7 @@ app.use(validator.extractHeaderLanguage);
 app.use(headerAuth.validateApiKey);
 app.use(headerAuth.header)
 
-cronn.updateOrderStatus();
+// cronn.updateOrderStatus();
 // app.use(common.decryptPlain);
 app_routing.v1(app); //router v1 ko call karega 
 

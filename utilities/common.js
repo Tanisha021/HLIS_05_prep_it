@@ -5,6 +5,8 @@ const {default: localizify} = require('localizify');
 const { t } = require("localizify");
 class common{
     generateOTP(){
+        console.log("Hello");
+        
         return Math.floor(1000 + Math.random() * 9000);
     }
     generateToken(length){
@@ -31,6 +33,55 @@ class common{
         console.log("OTP SENT: ", newOtp);
         const updateOtpQuery = `UPDATE tbl_otp SET otp = ?, verify = 0, is_deleted = 0, is_active = 1 WHERE user_id = ?`;
         await database.query(updateOtpQuery, [newOtp, user_id]);
+    }
+
+    async findExistingUser(database, email_id, phone_number = null) {
+        const findUserQuery = `SELECT * FROM tbl_user WHERE (email_id = ? OR phone_number = ?) AND is_deleted = 0 AND is_active = 1`;
+        const [existingUser] = await database.query(findUserQuery, [email_id, phone_number || email_id]);
+        return existingUser;
+    }
+    async findExistingDriver(database, email_id, phone_number = null) {
+        const findUserQuery = `SELECT * FROM tbl_driver WHERE (email_id = ? OR phone_number = ?) AND is_deleted = 0 AND is_active = 1`;
+        const [existingUser] = await database.query(findUserQuery, [email_id, phone_number || email_id]);
+        return existingUser;
+    }
+    
+    async handleExistingUserOTP(database, user) {
+        if (user.otp) {
+            return {
+                code: response_code.VERIFICATION_PENDING,
+                message: t('verify_account_user_exists')
+            };
+        }
+    
+        const otp_ = common.generateOtp(4);
+        const updateOtpQuery = `UPDATE tbl_user SET otp = ? WHERE user_id = ?`;
+        await database.query(updateOtpQuery, [otp_, user.user_id]);
+    
+        return {
+            code: response_code.VERIFICATION_PENDING,
+            message: t('otp_sent_please_verify_acc'),
+            data: user.email_id
+        };
+    }
+    
+    async handleExistingDriverOTP(database, user) {
+        if (user.otp) {
+            return {
+                code: response_code.VERIFICATION_PENDING,
+                message: t('verify_account_user_exists')
+            };
+        }
+    
+        const otp_ = common.generateOtp(4);
+        const updateOtpQuery = `UPDATE tbl_driver SET otp = ? WHERE driver_id = ?`;
+        await database.query(updateOtpQuery, [otp_, user.user_id]);
+    
+        return {
+            code: response_code.VERIFICATION_PENDING,
+            message: t('otp_sent_please_verify_acc'),
+            data: user.email_id
+        };
     }
 
     async getUserDetail(user_id, callback) {
@@ -112,6 +163,28 @@ class common{
             return error.message || error, [];
         }
     }
+    async getDriverDetailLogin(user_id, login_type) {
+        console.log("User ID:", user_id);
+        console.log("Login Type:", login_type);
+        
+        // Modified to get user details directly from tbl_user without joining tbl_socials
+        const selectUserQuery = "SELECT * FROM tbl_driver WHERE driver_id = ? ";
+        
+        try {
+            const [user] = await database.query(selectUserQuery, [user_id]);
+            console.log("User", user);
+            
+            if (user.length > 0) {
+                // Return the user object directly
+                return undefined, user[0];
+            } else {
+                return t('no_data_found'), [];
+            }
+        } catch (error) {
+            console.error("Error in getUserDetailLogin:", error);
+            return error.message || error, [];
+        }
+    }
     async getAdminDetailLogin(user_id, login_type) {
         console.log("User ID:", user_id);
         console.log("Login Type:", login_type);
@@ -135,6 +208,17 @@ class common{
         }
     }
     
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
   
     async encrypt (data) {
         try{

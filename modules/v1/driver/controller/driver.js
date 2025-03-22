@@ -2,8 +2,8 @@
 const response_code = require("../../../../utilities/response-error-code");
 const constant = require("../../../../config/constant");
 const common = require("../../../../utilities/common");
-const userModel = require("../models/user-model");
-const authModel = require("../models/auth-model");
+const userModel = require("../models/driver-model");
+// const authModel = require("../models/auth-model");
 const Validator = require('Validator')
 const {default: localizify} = require('localizify');
 const validationRules  = require('../../../validation_rules');
@@ -40,7 +40,7 @@ class User {
         console.log("Valid",valid);
         if (!valid) return;
         
-        const responseData = await authModel.signup(request_data);
+        const responseData = await userModel.signup(request_data);
         return common.response(res, responseData);
     }
 
@@ -55,7 +55,7 @@ class User {
 
         let message={
             required: req.language.required,
-            email: t('email'),
+            email_id: t('email'),
             'password_.min': t('passwords_min')
         }
 
@@ -67,7 +67,7 @@ class User {
             console.log("Valid",valid);
             if (!valid) return;
             
-            const responseData = await authModel.login(request_data);
+            const responseData = await userModel.login(request_data);
             
             // Send response
             return common.response(res, responseData);
@@ -82,11 +82,7 @@ class User {
     }
 
     async validateOTP(req, res) {
-        // {
-        //     "user_id": 1,
-        //     "otp": 7652
-        //   }
-          
+
         const request_data = JSON.parse(common.decryptPlain(req.body));
         const rules = validationRules.validateOTP;
         let message = {
@@ -104,7 +100,7 @@ class User {
         console.log("Valid",valid);
         if (!valid) return;
         
-        const responseData = await authModel.validateOTP(request_data);
+        const responseData = await userModel.validateOTP(request_data);
         return common.response(res, responseData);
     }
     resendOTP(req, res) {
@@ -133,7 +129,6 @@ class User {
         // });
     }
 
-
     async forgotPassword(req, res) {
         // {
         //     "email_id":"ra@example.com"
@@ -144,7 +139,7 @@ class User {
             const rules = validationRules.forgotPassword;
             let message = {
                 required: req.language.required,
-                email: t('email'),
+                email_id: t('email'),
             };  
         
             let keywords = {
@@ -155,13 +150,13 @@ class User {
             console.log("Valid",valid);
             if (!valid) return;
             
-            const responseData = await authModel.forgotPassword(request_data);
+            const responseData = await userModel.forgotPassword(request_data);
             return common.response(res, responseData);
 
         }catch(error){
             return common.response(res, {
                 code: response_code.OPERATION_FAILED,
-                message: t('rest_keywords_something_went_wrong')
+                message: t('rest_keywords_something_went_wrong') + error
             });
         }
        
@@ -190,7 +185,7 @@ class User {
         console.log("Valid",valid);
         if (!valid) return;
         
-        const responseData = await authModel.validateForgotPasswordOTP(request_data);
+        const responseData = await userModel.validateForgotPasswordOTP(request_data);
         return common.response(res, responseData);
     }
 
@@ -217,7 +212,7 @@ class User {
     
             const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
             if (!valid) return;
-            const responseData = await authModel.resetPassword(request_data);
+            const responseData = await userModel.resetPassword(request_data);
 
             return common.response(res, responseData);
 
@@ -252,7 +247,7 @@ class User {
                 'old_password.min': t('passwords_min'),
                 'new_password.min': t('passwords_min')
             }
-
+ 
             let keywords={
                 'new_password': t('rest_keywords_password'),
                 'old_password': t('rest_keywords_password')
@@ -261,48 +256,9 @@ class User {
             const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
             
         if (!valid) return;
-        
-            const responseData = await authModel.changePassword(request_data,req.user_id);
-            
-            // Send response
-            return common.response(res, responseData);
-        }catch(error){
-            return common.response(res, {
-                code: response_code.OPERATION_FAILED,
-                message: t('rest_keywords_something_went_wrong')
-            });
-        }
-    }
-
-    async ListOfVehicles(req, res) {
-
-        try{
-            // var request_data = req.body;
-            const request_data = JSON.parse(common.decryptPlain(req.body));
-
-            const rules = validationRules.ListOfVehicles
-
-            let message={
-                required:req.language.required,
-                required: t('required'),
-                "pickup_latitude":t('pickup_latitude'),
-                "pickup_longitude":t('pickup_longitude'),
-                "dropoff_latitude":t('drop_latitude'),
-                "dropoff_longitude":t('drop_longitude')
-            }
-
-            let keywords={
-                "pickup_latitude":t('pickup_latitude'),
-                "pickup_longitude":t('pickup_longitude'),
-                "dropoff_latitude":t('drop_latitude'),
-                "dropoff_longitude":t('drop_longitude')
-            }
-
-            const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
-            
-        if (!valid) return;
-        
-            const responseData = await userModel.ListOfVehicles(request_data,req.user_id);
+            console.log("-----------------")
+            console.log("Request Data:", req.user_id); 
+            const responseData = await userModel.changePassword(request_data,req.user_id);
             
             // Send response
             return common.response(res, responseData);
@@ -312,213 +268,6 @@ class User {
                 message: t('rest_keywords_something_went_wrong') + error
             });
         }
-    }
-    async createDeliveryOrder(req, res) {
-        
-        try{
-            // var request_data = req.body;
-            const request_data = JSON.parse(common.decryptPlain(req.body));
-
-            const rules = validationRules.ListOfVehicles
-
-            let message={
-                required:req.language.required,
-                required: t('required'),
-               
-            }
-
-            let keywords={
-                
-            }
-
-            const valid = middleware.checkValidationRules(req, res, request_data, rules, message, keywords);
-            
-        if (!valid) return;
-        
-            const responseData = await userModel.createDeliveryOrder(request_data,req.user_id);
-            
-            // Send response
-            return common.response(res, responseData);
-        }catch(error){
-            return common.response(res, {
-                code: response_code.OPERATION_FAILED,
-                message: t('rest_keywords_something_went_wrong') + error
-            });
-        }
-    }
-
-
-    async notification(req, res) {
-        try{
-            // const request_data = JSON.parse(common.decryptPlain(req.body));
-            const request_data=req.body;
-            if (Object.keys(request_data).length != 0) {
-                request_data = JSON.parse(common.decryptString(req.body));
-            }
-            console.log("Request Data after decryption:", request_data);
-            console.log(request_data);
-            const rules = validationRules.displayHomePage;
-
-        const valid = middleware.checkValidationRules(req,res,request_data,rules)
-        console.log("Valid",valid);
-        if (!valid) return;
-        const responseData = await userModel.notification(request_data,req.user_id);
-        
-        // Send response
-        return common.response(res, responseData);
-
-        }catch(error){
-            return common.response(res, {
-                code: response_code.OPERATION_FAILED,
-                message: t('rest_keywords_something_went_wrong') + error
-            });
-    }
-    }
-
-    async cancelOrder(req, res) {
-        try{
-            try{
-             
-                const request_data = JSON.parse(common.decryptPlain(req.body));
-        
-                console.log(request_data);
-                const rules = validationRules.cancelOrder;
-        
-                let message = {
-                    required: req.language.required,
-                    order_id: t('order_id'),
-
-                };
-                
-                let keywords = {
-                    order_id: t('order_id')
-                };
-            const valid = middleware.checkValidationRules(req,res,request_data,rules,message, keywords)
-            console.log("Valid",valid);
-            if (!valid) return;
-            const responseData = await userModel.cancelOrder(request_data,req.user_id);
-            
-            // Send response
-            return common.response(res, responseData);
-        
-            }catch(error){
-                return common.response(res, {
-                    code: response_code.OPERATION_FAILED,
-                    message: t('rest_keywords_something_went_wrong') + error
-                });
-        }
-        }catch(error){
-            return common.response(res, {
-                code: response_code.OPERATION_FAILED,
-                message: t('rest_keywords_something_went_wrong') + error
-            });
-        }
-    }
-
-    async contactUs(req, res) {
-        try{
-            try{
-             
-                const request_data = JSON.parse(common.decryptPlain(req.body));
-        
-                console.log(request_data);
-                const rules = validationRules.contactUs;
-        
-                let message = {
-                    required: req.language.required,
-                    full_name: t("full_name"),
-                    email_address: t("email_address"),
-                    code_id: t("code_id"),
-                    phone_number: t("phone_number")
-                };
-                
-                let keywords = {
-                    full_name: t("full_name"),
-                    email_address: t("email_address"),
-                    code_id: t("code_id"),
-                    phone_number: t("phone_number")
-                };
-            const valid = middleware.checkValidationRules(req,res,request_data,rules,message, keywords)
-            console.log("Valid",valid);
-            if (!valid) return;
-            const responseData = await userModel.contactUs(request_data,req.user_id);
-            
-            // Send response
-            return common.response(res, responseData);
-        
-            }catch(error){
-                return common.response(res, {
-                    code: response_code.OPERATION_FAILED,
-                    message: t('rest_keywords_something_went_wrong') + error
-                });
-        }
-        }catch(error){
-            return common.response(res, {
-                code: response_code.OPERATION_FAILED,
-                message: t('rest_keywords_something_went_wrong') + error
-            });
-        }
-    }
-
-    async listUserOrders(req,res){
-        try{
-            try{
-             
-                const request_data = JSON.parse(common.decryptPlain(req.body));
-        
-                console.log(request_data);
-                const rules = validationRules.listUserOrders;
-        
-                let message = {
-                    required: req.language.required,
-                };
-                
-                let keywords = {
-                   
-                };
-            const valid = middleware.checkValidationRules(req,res,request_data,rules,message, keywords)
-            console.log("Valid",valid);
-            if (!valid) return;
-            const responseData = await userModel.listUserOrders(request_data,req.user_id);
-            
-            return common.response(res, responseData);
-        
-            }catch(error){
-                return common.response(res, {
-                    code: response_code.OPERATION_FAILED,
-                    message: t('rest_keywords_something_went_wrong') + error
-                });
-        }
-        }catch(error){
-            return common.response(res, {
-                code: response_code.OPERATION_FAILED,
-                message: t('rest_keywords_something_went_wrong') + error
-            });
-        }
-    }
-
-
-    async logout(req, res) {
-        try{
-            const request_data = JSON.parse(common.decryptPlain(req.body));
-
-            console.log(request_data);
-            const rules = validationRules.logout;
-
-        const valid = middleware.checkValidationRules(req,res,request_data,rules)
-        console.log("Valid",valid);
-        if (!valid) return;
-        const responseData = await userModel.logout(request_data,req.user_id);
-        
-        // Send response
-        return common.response(res, responseData);
-
-        }catch(error){
-            return common.response(res, {
-                code: response_code.OPERATION_FAILED,
-                message: t('rest_keywords_something_went_wrong') + error
-            });
-    }
     }
 
     async delete(req, res) {

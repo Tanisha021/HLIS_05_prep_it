@@ -4,25 +4,26 @@ const checkValidatorRules = {
 
     login: {
         email_id: 'required|email',
-        // login_type: 'required|in:S,G,F,A',
-        // Passwords should only be required for standard login
-        password_: 'required',
+        login_type: 'required|string|in:S,G,F,A',
+        password_: 'required_if:login_type,S',
+        social_id: 'required_if:login_type,G,F,A'
         // Social ID should only be required for social logins
         // social_id: 'required_if:login_type,G,F,A'
     },  
     login_admin: {
         email_id: 'required|email',
-        password_: 'required'
+        // password_: 'required'
     },  
-    signup: {
+    signup: {    
         email_id: 'required|email',
-        user_name: 'required',
-        password_: 'required_if:signup_type,S|min:8',
-        phone_number: 'string|size:10|regex:/^[0-9]{10}$/',
-        code_id: 'required|numeric',
+        // full_name: 'required_if:signup_type,S|required',
+        // password_: 'required_if:signup_type,S|min:8',
+        // phone_number: 'required_if:signup_type,S|string|size:10|regex:/^[0-9]{10}$/',
+        // code_id: 'required_if:signup_type,S|required|numeric',
+        signup_type: 'required|in:S,G,F,A',
     },
     validateOTP:{
-        phone_number: 'required',
+        // phone_number: 'required',
         otp: 'required'
     },
     resendOTP:{
